@@ -1,0 +1,10 @@
+Install expo-router and its dependencies :
+npx expo install expo-router react-native-safe-area-context react-native-screens
+
+Install the client: 
+npx expo install @supabase/supabase-js
+
+Install core packages Add zustand (state), react-hook-form + zod (forms/validation), 
+expo-notifications (push), react-native-chart-kit (admin charts), 
+and a UI library like react-native-paper. :
+npx expo install zustand react-hook-form zod expo-notifications react-native-chart-kit react-native-paper react-native-svg react-native-vector-icons

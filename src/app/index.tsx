@@ -14,6 +14,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { ActivityIndicator, Text } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
 
 /* ------------------------------------------------------------------ */
@@ -21,7 +22,7 @@ import { supabase } from "../lib/supabase";
 /* ------------------------------------------------------------------ */
 const C = {
   ink: "#0B1020",
-  inkSoft: "#1A2036",
+  inkSoft: "#1F2640",
   paper: "#F7F5F0",
   card: "#FFFFFF",
   line: "#E7E3DA",
@@ -33,7 +34,7 @@ const C = {
   success: "#12A150",
 };
 
-const LOGO_RATIO = 259 / 217; // width / height of the supplied logo
+const LOGO_RATIO = 259 / 217; // logo width / height
 
 const shadow = (y: number, blur: number, opacity: number) =>
   Platform.select({
@@ -93,7 +94,7 @@ function Brand({ size = 40 }: { size?: number }) {
     <View style={styles.brand}>
       <Image
         source={require("../../assets/images/logo.png")}
-        style={{ height: size, aspectRatio: LOGO_RATIO }}
+        style={{ height: size, width: size * LOGO_RATIO }}
         resizeMode="contain"
       />
       <Text style={styles.brandText}>Adhyay</Text>
@@ -101,13 +102,16 @@ function Brand({ size = 40 }: { size?: number }) {
   );
 }
 
-function PipelineCard() {
+function PipelineCard({ compact }: { compact: boolean }) {
+  const pad = compact ? 16 : 22;
   return (
     <View style={styles.pipelineCard}>
-      <View style={styles.pipelineHeader}>
-        <View style={{ flex: 1 }}>
+      <View style={[styles.pipelineHeader, { padding: pad }]}>
+        <View style={styles.pipelineHeaderText}>
           <Text style={styles.pipelineKicker}>DRIVE TRACKING</Text>
-          <Text style={styles.pipelineTitle}>Software Engineer · Sample</Text>
+          <Text style={styles.pipelineTitle} numberOfLines={1}>
+            Software Engineer · Sample
+          </Text>
         </View>
         <View style={styles.livePill}>
           <MotiView
@@ -125,7 +129,7 @@ function PipelineCard() {
         </View>
       </View>
 
-      <View style={styles.pipelineBody}>
+      <View style={{ padding: pad, paddingBottom: pad - 8 }}>
         {PIPELINE.map((step, i) => {
           const last = i === PIPELINE.length - 1;
           return (
@@ -190,13 +194,18 @@ function PipelineCard() {
 /* ------------------------------------------------------------------ */
 function LandingPage() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
+  const isSmall = width < 380; // small phones
   const isMobile = width < 768;
   const isTablet = width >= 768 && width < 1024;
   const isDesktop = width >= 1024;
 
-  const gutter = isMobile ? 20 : isDesktop ? 56 : 32;
+  const gutter = isSmall ? 16 : isMobile ? 20 : isDesktop ? 56 : 32;
+  const topInset = Platform.OS === "web" ? 0 : insets.top;
+  const bottomInset = Platform.OS === "web" ? 0 : insets.bottom;
+
   const goLogin = () => router.push("/(auth)/login" as any);
   const goSignup = () => router.push("/(auth)/signup" as any);
 
@@ -206,40 +215,39 @@ function LandingPage() {
       <View style={styles.ambientTop} />
       <View style={styles.ambientBottom} />
 
-      {/* NAV */}
-      <View style={[styles.nav, { paddingHorizontal: gutter }]}>
-        <View style={styles.navInner}>
-          <Brand size={isMobile ? 34 : 40} />
-          <View style={styles.navActions}>
-            {!isMobile && (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={goLogin}
-                style={styles.navLink}
-              >
-                <Text style={styles.navLinkText}>Sign In</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={isMobile ? goLogin : goSignup}
-              style={styles.navCta}
-            >
-              <Text style={styles.navCtaText}>
-                {isMobile ? "Sign In" : "Create Account"}
-              </Text>
-            </TouchableOpacity>
-          </View>
+      {/* NAV: brand + the single "existing user" action */}
+      <View
+        style={[
+          styles.nav,
+          { paddingHorizontal: gutter, paddingTop: topInset },
+        ]}
+      >
+        <View style={[styles.navInner, { height: isMobile ? 60 : 72 }]}>
+          <Brand size={isMobile ? 32 : 40} />
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={goLogin}
+            style={styles.navSignIn}
+          >
+            <MaterialCommunityIcons
+              name="login-variant"
+              size={16}
+              color={C.ink}
+            />
+            <Text style={styles.navSignInText}>Sign In</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={[
           styles.scrollLayout,
           {
             paddingHorizontal: gutter,
-            paddingTop: isMobile ? 32 : 56,
-            gap: isMobile ? 56 : 88,
+            paddingTop: isMobile ? 28 : 56,
+            paddingBottom: 40 + bottomInset,
+            gap: isMobile ? 48 : 88,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -250,7 +258,7 @@ function LandingPage() {
             styles.heroRow,
             {
               flexDirection: isDesktop ? "row" : "column",
-              gap: isDesktop ? 56 : 40,
+              gap: isDesktop ? 56 : 36,
             },
           ]}
         >
@@ -260,15 +268,13 @@ function LandingPage() {
             transition={{ type: "timing", duration: 700 }}
             style={[
               styles.heroLeft,
-              {
-                flex: isDesktop ? 1.1 : undefined,
-                alignItems: isDesktop ? "flex-start" : "center",
-              },
+              isDesktop && { flex: 1.1, alignItems: "flex-start" },
+              !isDesktop && { alignItems: "center" },
             ]}
           >
             <View style={styles.heroBadge}>
               <View style={styles.badgeDot} />
-              <Text style={styles.heroBadgeText}>
+              <Text style={styles.heroBadgeText} numberOfLines={1}>
                 Campus Recruitment Management
               </Text>
             </View>
@@ -277,8 +283,9 @@ function LandingPage() {
               style={[
                 styles.mainTitle,
                 {
-                  fontSize: isMobile ? 42 : isTablet ? 60 : 70,
-                  lineHeight: isMobile ? 48 : isTablet ? 66 : 76,
+                  fontSize: isSmall ? 36 : isMobile ? 44 : isTablet ? 62 : 72,
+                  lineHeight: isSmall ? 42 : isMobile ? 50 : isTablet ? 68 : 78,
+                  letterSpacing: isMobile ? -1.5 : -2.5,
                   textAlign: isDesktop ? "left" : "center",
                 },
               ]}
@@ -292,9 +299,9 @@ function LandingPage() {
                 styles.subTitle,
                 {
                   fontSize: isMobile ? 16 : 18,
-                  lineHeight: isMobile ? 26 : 29,
+                  lineHeight: isMobile ? 25 : 29,
                   textAlign: isDesktop ? "left" : "center",
-                  maxWidth: isDesktop ? 520 : 600,
+                  maxWidth: isDesktop ? 520 : 560,
                 },
               ]}
             >
@@ -302,35 +309,19 @@ function LandingPage() {
               talent with enterprise hiring teams.
             </Text>
 
-            <View
-              style={[
-                styles.heroButtons,
-                {
-                  flexDirection: isMobile ? "column" : "row",
-                  width: isMobile ? "100%" : "auto",
-                },
-              ]}
+            {/* Single primary action in the hero */}
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={[styles.btnInk, isMobile && styles.btnFull]}
+              onPress={goSignup}
             >
-              <TouchableOpacity
-                activeOpacity={0.85}
-                style={[styles.btnInk, isMobile && { width: "100%" }]}
-                onPress={goSignup}
-              >
-                <Text style={styles.btnInkText}>Create Account</Text>
-                <MaterialCommunityIcons
-                  name="arrow-right"
-                  size={18}
-                  color="#fff"
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.85}
-                style={[styles.btnOutline, isMobile && { width: "100%" }]}
-                onPress={goLogin}
-              >
-                <Text style={styles.btnOutlineText}>Sign In</Text>
-              </TouchableOpacity>
-            </View>
+              <Text style={styles.btnInkText}>Create Account</Text>
+              <MaterialCommunityIcons
+                name="arrow-right"
+                size={18}
+                color="#fff"
+              />
+            </TouchableOpacity>
           </MotiView>
 
           <MotiView
@@ -339,51 +330,56 @@ function LandingPage() {
             transition={{ type: "timing", duration: 800, delay: 200 }}
             style={[
               styles.heroRight,
-              {
-                flex: isDesktop ? 0.9 : undefined,
-                width: "100%",
-                maxWidth: isDesktop ? undefined : 520,
-              },
+              isDesktop ? { flex: 0.9 } : { width: "100%", maxWidth: 520 },
             ]}
           >
-            <View style={styles.heroGlow} />
-            <PipelineCard />
+            <PipelineCard compact={isSmall} />
           </MotiView>
         </View>
 
-        {/* 2. STATS */}
+        {/* 2. STATS (always a row so it never collapses on phones) */}
         <MotiView
           from={{ opacity: 0, translateY: 20 }}
           animate={{ opacity: 1, translateY: 0 }}
           transition={{ type: "timing", duration: 700, delay: 250 }}
-          style={[
-            styles.statsBand,
-            { flexDirection: isMobile ? "column" : "row" },
-          ]}
+          style={styles.statsBand}
         >
-          {STATS.map((stat, i) => {
-            const last = i === STATS.length - 1;
-            return (
-              <View
-                key={stat.label}
+          {STATS.map((stat, i) => (
+            <View
+              key={stat.label}
+              style={[
+                styles.statItem,
+                {
+                  paddingVertical: isMobile ? 20 : 36,
+                  paddingHorizontal: isMobile ? 6 : 16,
+                },
+                i !== STATS.length - 1 && {
+                  borderRightWidth: 1,
+                  borderRightColor: C.inkSoft,
+                },
+              ]}
+            >
+              <Text
                 style={[
-                  styles.statItem,
-                  { paddingVertical: isMobile ? 22 : 36 },
-                  !last &&
-                    (isMobile
-                      ? { borderBottomWidth: 1, borderBottomColor: C.inkSoft }
-                      : { borderRightWidth: 1, borderRightColor: C.inkSoft }),
+                  styles.statValue,
+                  { fontSize: isSmall ? 22 : isMobile ? 26 : 44 },
                 ]}
               >
-                <Text
-                  style={[styles.statValue, { fontSize: isMobile ? 34 : 44 }]}
-                >
-                  {stat.value}
-                </Text>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-              </View>
-            );
-          })}
+                {stat.value}
+              </Text>
+              <Text
+                style={[
+                  styles.statLabel,
+                  {
+                    fontSize: isMobile ? 9.5 : 12,
+                    letterSpacing: isMobile ? 0.6 : 1.2,
+                  },
+                ]}
+              >
+                {stat.label}
+              </Text>
+            </View>
+          ))}
         </MotiView>
 
         {/* 3. FEATURES */}
@@ -396,7 +392,10 @@ function LandingPage() {
           <View style={styles.sectionHeaderWrap}>
             <Text style={styles.eyebrow}>WHAT'S INSIDE</Text>
             <Text
-              style={[styles.sectionTitle, { fontSize: isMobile ? 28 : 38 }]}
+              style={[
+                styles.sectionTitle,
+                { fontSize: isSmall ? 24 : isMobile ? 28 : 38 },
+              ]}
             >
               Enterprise-Grade Features
             </Text>
@@ -410,7 +409,7 @@ function LandingPage() {
               styles.featuresGrid,
               {
                 flexDirection: isMobile ? "column" : "row",
-                gap: isMobile ? 16 : 20,
+                gap: isMobile ? 14 : 20,
               },
             ]}
           >
@@ -419,10 +418,9 @@ function LandingPage() {
                 key={feature.title}
                 style={[
                   styles.featureCard,
-                  {
-                    flex: isMobile ? undefined : 1,
-                    padding: isMobile ? 24 : 28,
-                  },
+                  isMobile
+                    ? { width: "100%", padding: 22 }
+                    : { flex: 1, padding: isTablet ? 22 : 28 },
                 ]}
               >
                 <View style={styles.featureTop}>
@@ -456,7 +454,10 @@ function LandingPage() {
           <View style={styles.sectionHeaderWrap}>
             <Text style={styles.eyebrow}>OUR NETWORK</Text>
             <Text
-              style={[styles.sectionTitle, { fontSize: isMobile ? 26 : 32 }]}
+              style={[
+                styles.sectionTitle,
+                { fontSize: isSmall ? 22 : isMobile ? 26 : 32 },
+              ]}
             >
               Trusted by Top Companies
             </Text>
@@ -466,7 +467,7 @@ function LandingPage() {
           </View>
         </MotiView>
 
-        {/* 5. CALL TO ACTION */}
+        {/* 5. CALL TO ACTION: one button, plus a quiet sign-in link */}
         <MotiView
           from={{ opacity: 0, translateY: 20 }}
           animate={{ opacity: 1, translateY: 0 }}
@@ -476,12 +477,17 @@ function LandingPage() {
           <View
             style={[
               styles.ctaCard,
-              { padding: isMobile ? 28 : isTablet ? 48 : 64 },
+              { padding: isSmall ? 24 : isMobile ? 28 : isTablet ? 48 : 64 },
             ]}
           >
             <View style={styles.ctaGlow} />
             <Text style={styles.ctaEyebrow}>NEXT CHAPTER</Text>
-            <Text style={[styles.ctaTitle, { fontSize: isMobile ? 30 : 44 }]}>
+            <Text
+              style={[
+                styles.ctaTitle,
+                { fontSize: isSmall ? 26 : isMobile ? 30 : 44 },
+              ]}
+            >
               Ready to begin?
             </Text>
             <Text style={styles.ctaDesc}>
@@ -489,34 +495,20 @@ function LandingPage() {
               candidate profiles in your secure workspace.
             </Text>
 
-            <View
-              style={[
-                styles.ctaButtonGroup,
-                {
-                  flexDirection: isMobile ? "column" : "row",
-                  width: isMobile ? "100%" : "auto",
-                },
-              ]}
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={[styles.btnPrimary, isMobile && styles.btnFull]}
+              onPress={goSignup}
             >
-              <TouchableOpacity
-                activeOpacity={0.85}
-                style={[styles.btnPrimary, { width: isMobile ? "100%" : 180 }]}
-                onPress={goLogin}
-              >
-                <Text style={styles.btnPrimaryText}>Sign In</Text>
-              </TouchableOpacity>
+              <Text style={styles.btnPrimaryText}>Create Account</Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                activeOpacity={0.85}
-                style={[
-                  styles.btnSecondary,
-                  { width: isMobile ? "100%" : 180 },
-                ]}
-                onPress={goSignup}
-              >
-                <Text style={styles.btnSecondaryText}>Create Account</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity activeOpacity={0.7} onPress={goLogin}>
+              <Text style={styles.ctaLinkText}>
+                Already have an account?{" "}
+                <Text style={styles.ctaLinkStrong}>Sign In</Text>
+              </Text>
+            </TouchableOpacity>
           </View>
         </MotiView>
 
@@ -530,7 +522,7 @@ function LandingPage() {
             },
           ]}
         >
-          <Brand size={28} />
+          <Brand size={26} />
           <Text style={styles.footerText}>
             © Adhyay • Developed for excellence.
           </Text>
@@ -585,7 +577,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: C.paper,
-    position: "relative",
     overflow: "hidden",
   },
   loadingContainer: {
@@ -602,34 +593,32 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -220,
     right: -160,
-    width: 560,
-    height: 560,
-    borderRadius: 280,
+    width: 520,
+    height: 520,
+    borderRadius: 260,
     backgroundColor: "rgba(31, 91, 255, 0.07)",
   },
   ambientBottom: {
     position: "absolute",
     bottom: -240,
     left: -180,
-    width: 520,
-    height: 520,
-    borderRadius: 260,
+    width: 480,
+    height: 480,
+    borderRadius: 240,
     backgroundColor: "rgba(245, 181, 68, 0.10)",
   },
 
   /* Nav */
   nav: {
-    backgroundColor: "rgba(247, 245, 240, 0.92)",
+    backgroundColor: C.paper,
     borderBottomWidth: 1,
     borderBottomColor: C.line,
-    paddingTop: Platform.OS === "ios" ? 52 : Platform.OS === "android" ? 28 : 0,
     zIndex: 10,
   },
   navInner: {
     width: "100%",
     maxWidth: 1200,
     alignSelf: "center",
-    height: 68,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -641,32 +630,35 @@ const styles = StyleSheet.create({
     color: C.ink,
     letterSpacing: -0.5,
   },
-  navActions: { flexDirection: "row", alignItems: "center", gap: 8 },
-  navLink: { paddingVertical: 10, paddingHorizontal: 16 },
-  navLinkText: { fontSize: 15, fontWeight: "600", color: C.ink },
-  navCta: {
-    backgroundColor: C.ink,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
+  navSignIn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 16,
     borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: C.line,
+    backgroundColor: C.card,
   },
-  navCtaText: { fontSize: 14, fontWeight: "700", color: "#fff" },
+  navSignInText: { fontSize: 14, fontWeight: "700", color: C.ink },
 
   /* Layout */
+  scroll: { flex: 1 },
   scrollLayout: {
-    paddingBottom: 56,
-    maxWidth: 1312, // 1200 content + horizontal padding headroom
+    maxWidth: 1312,
     width: "100%",
     alignSelf: "center",
   },
 
   /* Hero */
   heroRow: { alignItems: "center", width: "100%" },
-  heroLeft: { gap: 24, width: "100%" },
+  heroLeft: { gap: 22, width: "100%" },
   heroRight: { alignItems: "center", justifyContent: "center" },
   heroBadge: {
     flexDirection: "row",
     alignItems: "center",
+    alignSelf: "center",
     backgroundColor: C.card,
     paddingVertical: 8,
     paddingHorizontal: 14,
@@ -674,6 +666,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: C.line,
     gap: 8,
+    maxWidth: "100%",
   },
   badgeDot: {
     width: 8,
@@ -682,70 +675,50 @@ const styles = StyleSheet.create({
     backgroundColor: C.accent,
   },
   heroBadgeText: {
+    flexShrink: 1,
     fontSize: 11,
     fontWeight: "700",
     color: C.muted,
-    letterSpacing: 0.8,
+    letterSpacing: 0.7,
     textTransform: "uppercase",
   },
-  mainTitle: {
-    fontWeight: "800",
-    color: C.ink,
-    letterSpacing: -2,
-  },
+  mainTitle: { fontWeight: "800", color: C.ink },
   titleAccent: { color: C.accent },
   subTitle: { color: C.muted },
-  heroButtons: { gap: 12, marginTop: 8 },
+  btnFull: { width: "100%" },
   btnInk: {
     backgroundColor: C.ink,
     paddingVertical: 16,
-    paddingHorizontal: 28,
+    paddingHorizontal: 32,
     borderRadius: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
+    marginTop: 6,
     ...shadow(8, 20, 0.18),
   },
   btnInkText: { fontSize: 16, fontWeight: "700", color: "#fff" },
-  btnOutline: {
-    backgroundColor: C.card,
-    paddingVertical: 16,
-    paddingHorizontal: 28,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: C.line,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  btnOutlineText: { fontSize: 16, fontWeight: "700", color: C.ink },
 
   /* Pipeline card */
-  heroGlow: {
-    position: "absolute",
-    width: "80%",
-    height: "80%",
-    borderRadius: 999,
-    backgroundColor: "rgba(31, 91, 255, 0.10)",
-  },
   pipelineCard: {
     width: "100%",
     backgroundColor: C.card,
-    borderRadius: 28,
+    borderRadius: 26,
     borderWidth: 1,
     borderColor: C.line,
     overflow: "hidden",
-    ...shadow(24, 48, 0.1),
+    ...shadow(20, 40, 0.1),
   },
   pipelineHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    padding: 22,
     borderBottomWidth: 1,
     borderBottomColor: C.line,
     backgroundColor: "#FBFAF7",
   },
+  pipelineHeaderText: { flex: 1, minWidth: 0 },
   pipelineKicker: {
     fontSize: 11,
     fontWeight: "700",
@@ -753,7 +726,7 @@ const styles = StyleSheet.create({
     color: C.faint,
   },
   pipelineTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     color: C.ink,
     marginTop: 4,
@@ -779,8 +752,7 @@ const styles = StyleSheet.create({
     color: C.success,
     letterSpacing: 0.8,
   },
-  pipelineBody: { padding: 22, paddingBottom: 14 },
-  stepRow: { flexDirection: "row", gap: 16, minHeight: 64 },
+  stepRow: { flexDirection: "row", gap: 14, minHeight: 60 },
   stepRail: { alignItems: "center", width: 28 },
   stepCircle: {
     width: 28,
@@ -813,10 +785,11 @@ const styles = StyleSheet.create({
   /* Stats */
   statsBand: {
     width: "100%",
+    flexDirection: "row",
     backgroundColor: C.ink,
-    borderRadius: 28,
+    borderRadius: 24,
     overflow: "hidden",
-    ...shadow(16, 40, 0.14),
+    ...shadow(14, 36, 0.14),
   },
   statItem: {
     flex: 1,
@@ -827,18 +800,18 @@ const styles = StyleSheet.create({
   statValue: {
     fontWeight: "800",
     color: "#FFFFFF",
-    letterSpacing: -1,
+    letterSpacing: -0.5,
+    textAlign: "center",
   },
   statLabel: {
-    fontSize: 12,
     fontWeight: "700",
     color: C.amber,
     textTransform: "uppercase",
-    letterSpacing: 1.2,
+    textAlign: "center",
   },
 
   /* Sections */
-  section: { gap: 36, width: "100%" },
+  section: { gap: 28, width: "100%" },
   sectionHeaderWrap: { alignItems: "center", gap: 10 },
   eyebrow: {
     fontSize: 12,
@@ -865,8 +838,8 @@ const styles = StyleSheet.create({
     backgroundColor: C.card,
     borderWidth: 1,
     borderColor: C.line,
-    borderRadius: 24,
-    gap: 28,
+    borderRadius: 22,
+    gap: 24,
     ...shadow(6, 20, 0.04),
   },
   featureTop: {
@@ -875,56 +848,58 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   featureIconWrap: {
-    width: 56,
-    height: 56,
+    width: 52,
+    height: 52,
     borderRadius: 16,
     backgroundColor: C.accentSoft,
     alignItems: "center",
     justifyContent: "center",
   },
   featureNumber: {
-    fontSize: 44,
+    fontSize: 40,
     fontWeight: "800",
-    color: "#EFECE4",
+    color: "#EAE6DC",
     letterSpacing: -2,
   },
   featureTextWrap: { gap: 8 },
   featureTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: "800",
     color: C.ink,
     letterSpacing: -0.3,
   },
-  featureDesc: { fontSize: 15, color: C.muted, lineHeight: 24 },
+  featureDesc: { fontSize: 15, color: C.muted, lineHeight: 23 },
 
   /* Marquee */
   marqueeContainer: {
+    width: "100%",
     backgroundColor: C.card,
     borderWidth: 1,
     borderColor: C.line,
-    borderRadius: 24,
-    paddingVertical: 24,
+    borderRadius: 22,
+    paddingVertical: 22,
     overflow: "hidden",
   },
 
   /* CTA */
   ctaSection: { width: "100%" },
   ctaCard: {
+    width: "100%",
     backgroundColor: C.ink,
-    borderRadius: 32,
+    borderRadius: 28,
     alignItems: "center",
-    gap: 18,
+    gap: 16,
     overflow: "hidden",
-    ...shadow(20, 40, 0.18),
+    ...shadow(18, 38, 0.18),
   },
   ctaGlow: {
     position: "absolute",
     top: -160,
     right: -120,
-    width: 380,
-    height: 380,
-    borderRadius: 190,
-    backgroundColor: "rgba(31, 91, 255, 0.35)",
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    backgroundColor: "rgba(31, 91, 255, 0.32)",
   },
   ctaEyebrow: {
     fontSize: 12,
@@ -942,35 +917,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#A7AEC0",
     textAlign: "center",
-    lineHeight: 26,
+    lineHeight: 25,
     maxWidth: 500,
-    marginBottom: 10,
+    marginBottom: 6,
   },
-  ctaButtonGroup: { gap: 14, justifyContent: "center" },
   btnPrimary: {
     backgroundColor: "#FFFFFF",
     paddingVertical: 16,
+    paddingHorizontal: 40,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
   btnPrimaryText: { fontSize: 16, fontWeight: "700", color: C.ink },
-  btnSecondary: {
-    backgroundColor: "transparent",
-    borderWidth: 1.5,
-    borderColor: "#3A4260",
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
+  ctaLinkText: { fontSize: 14, color: "#A7AEC0", textAlign: "center" },
+  ctaLinkStrong: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    textDecorationLine: "underline",
   },
-  btnSecondaryText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF" },
 
   /* Footer */
   footer: {
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 28,
+    paddingTop: 24,
     borderTopWidth: 1,
     borderTopColor: C.line,
     width: "100%",

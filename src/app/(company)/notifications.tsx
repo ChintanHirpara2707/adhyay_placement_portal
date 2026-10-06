@@ -1,15 +1,16 @@
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, View, FlatList, Alert, RefreshControl } from 'react-native';
-import { Card, Text, Button } from 'react-native-paper';
+import { Text, Button } from 'react-native-paper';
 import { Skeleton } from '@/components/SkeletonLoader';
 import { useFocusEffect } from 'expo-router';
 import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { Theme } from '@/theme/theme';
+import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { WebOnlyDecorations } from '@/components/WebOnlyDecorations';
+import { EmptyState } from '@/components/ui/kit';
 
 interface Notification {
   id: string;
@@ -91,53 +92,51 @@ export default function CompanyNotificationsScreen() {
   const todayItems = notifications.filter((n) => isToday(n.created_at));
   const earlierItems = notifications.filter((n) => !isToday(n.created_at));
 
-  const renderNotif = (item: Notification, index: number) => (
-    <MotiView from={{ opacity: 0, translateY: 15 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: Math.min(index * 50, 300) }}>
-      <AnimatedPressable onPress={() => handlePressNotification(item)} scaleTo={0.98}>
-        <Card style={[styles.card, !item.read && styles.unreadCard]} elevation={item.read ? 0 : 1}>
-          <Card.Content style={styles.cardContent}>
-            <View style={styles.titleContainer}>
-              {!item.read && <View style={styles.unreadDot} />}
-              <Text style={[styles.messageText, !item.read ? styles.unreadMessage : styles.readMessage]}>{item.message}</Text>
-            </View>
-            <Text style={styles.dateText}>{formatCreatedAt(item.created_at)}</Text>
-          </Card.Content>
-        </Card>
-      </AnimatedPressable>
-    </MotiView>
+  const renderNotif = (item: Notification) => (
+    <AnimatedPressable onPress={() => handlePressNotification(item)} scaleTo={0.98}>
+      <View style={[styles.card, !item.read && styles.unreadCard]}>
+        <View style={styles.titleContainer}>
+          {!item.read && <View style={styles.unreadDot} />}
+          <Text style={[styles.messageText, !item.read ? styles.unreadMessage : styles.readMessage]}>{item.message}</Text>
+        </View>
+        <Text style={styles.dateText}>{formatCreatedAt(item.created_at)}</Text>
+      </View>
+    </AnimatedPressable>
   );
 
   return (
     <View style={styles.container}>
       <WebOnlyDecorations />
       <TopNavbar title="Notifications" subtitle={`${notifications.filter((n) => !n.read).length} unread`} />
+      <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
+        <Text style={styles.eyebrow}>Inbox</Text>
+        <Text style={styles.heading}>Notifications</Text>
+      </MotiView>
       <View style={styles.actionRow}>
-        <Button mode="text" textColor={Theme.colors.primaryAccent} onPress={markAllAsRead}>
+        <Button mode="text" textColor={C.accent} labelStyle={styles.actionLabel} onPress={markAllAsRead}>
           Mark all as read
         </Button>
       </View>
       {loading ? (
         <View style={styles.listContainer}>
-          <Skeleton height={70} borderRadius={12} style={{ marginBottom: 10 }} />
-          <Skeleton height={70} borderRadius={12} style={{ marginBottom: 10 }} />
+          <Skeleton height={70} borderRadius={18} style={{ marginBottom: 10 }} />
+          <Skeleton height={70} borderRadius={18} style={{ marginBottom: 10 }} />
         </View>
       ) : notifications.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>You have no notifications at this time.</Text>
-        </View>
+        <EmptyState icon="bell-off-outline" title="All caught up" hint="You have no notifications at this time." />
       ) : (
         <FlatList
           data={[{ key: 'today', items: todayItems }, { key: 'earlier', items: earlierItems }]}
           keyExtractor={(s) => s.key}
           contentContainerStyle={styles.listContainer}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchNotifications(true)} tintColor={Theme.colors.primaryAccent} colors={[Theme.colors.primaryAccent]} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchNotifications(true)} tintColor={C.accent} colors={[C.accent]} />}
           renderItem={({ item: section }) => (
             <View>
               <Text style={styles.sectionTitle}>{section.key === 'today' ? 'Today' : 'Earlier'}</Text>
               {section.items.length === 0 ? (
                 <Text style={styles.sectionEmpty}>Nothing here.</Text>
               ) : (
-                section.items.map((item, i) => <View key={item.id}>{renderNotif(item, i)}</View>)
+                section.items.map((item) => <View key={item.id}>{renderNotif(item)}</View>)
               )}
             </View>
           )}
@@ -148,20 +147,20 @@ export default function CompanyNotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Theme.colors.background },
-  listContainer: { padding: Theme.spacing.md, gap: Theme.spacing.sm },
-  actionRow: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: Theme.spacing.sm },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: Theme.colors.primaryText, marginTop: 8, marginBottom: 4 },
-  sectionEmpty: { fontSize: 12, color: Theme.colors.secondaryText, marginBottom: 8 },
-  card: { backgroundColor: Theme.colors.surface, borderRadius: Theme.borderRadius.lg, borderWidth: 1, borderColor: Theme.colors.border, marginBottom: Theme.spacing.sm },
-  unreadCard: { backgroundColor: '#F8FAFC', borderColor: '#CBD5E1' },
-  cardContent: { padding: Theme.spacing.md },
-  titleContainer: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Theme.colors.primaryAccent, marginRight: 8 },
-  messageText: { fontSize: 14, flex: 1, lineHeight: 20 },
-  unreadMessage: { fontWeight: '600', color: Theme.colors.primaryText },
-  readMessage: { fontWeight: '400', color: Theme.colors.secondaryText },
-  dateText: { fontSize: 12, color: Theme.colors.secondaryText, marginTop: 4 },
-  emptyContainer: { flex: 1, padding: Theme.spacing.xl, alignItems: 'center', justifyContent: 'center', marginTop: 60 },
-  emptyText: { fontSize: 15, color: Theme.colors.secondaryText, textAlign: 'center' },
+  container: { flex: 1, backgroundColor: C.paper },
+  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent, paddingHorizontal: 16, paddingTop: 16 },
+  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, paddingHorizontal: 16, marginTop: 4 },
+  listContainer: { paddingHorizontal: 16, paddingBottom: 24, gap: 10 },
+  actionRow: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 8 },
+  actionLabel: { fontSize: 13, fontWeight: '700' },
+  sectionTitle: { fontSize: 13, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', color: C.ink, marginTop: 8, marginBottom: 6 },
+  sectionEmpty: { fontSize: 12, color: C.muted, marginBottom: 8 },
+  card: { backgroundColor: C.card, borderRadius: 18, borderWidth: 1, borderColor: C.line, marginBottom: 10, padding: 14, gap: 4 },
+  unreadCard: { backgroundColor: C.accentSoft, borderColor: C.accent },
+  titleContainer: { flexDirection: 'row', alignItems: 'flex-start', flex: 1 },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.accent, marginRight: 8, marginTop: 6 },
+  messageText: { fontSize: 15, flex: 1, minWidth: 0, flexShrink: 1, lineHeight: 22 },
+  unreadMessage: { fontWeight: '700', color: C.ink },
+  readMessage: { fontWeight: '400', color: C.muted },
+  dateText: { fontSize: 12, color: C.faint, marginTop: 4 },
 });

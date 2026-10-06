@@ -1,13 +1,14 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, View, ScrollView, Alert, Dimensions, TouchableOpacity } from 'react-native';
-import { Card, Text } from 'react-native-paper';
+import { StyleSheet, View, Alert, Dimensions, TouchableOpacity } from 'react-native';
+import { Text } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { BarChart } from 'react-native-chart-kit';
 import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
-import { Theme } from '@/theme/theme';
+import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
-import { StatCard } from '@/components/StatCard';
+import { Screen } from '@/components/ui/Screen';
+import { Card, SectionHeader, StatCard, EmptyState, ResponsiveGrid } from '@/components/ui/kit';
 import { ActivityFeedItem } from '@/components/ActivityFeedItem';
 import { Skeleton } from '@/components/SkeletonLoader';
 import { WebOnlyDecorations } from '@/components/WebOnlyDecorations';
@@ -96,97 +97,96 @@ export default function AdminDashboardScreen() {
   const screenWidth = Dimensions.get('window').width;
 
   return (
-    <View style={styles.container}>
+    <View style={styles.shell}>
       <WebOnlyDecorations />
       <TopNavbar title="Dashboard" subtitle="Admin analytics" />
       {loading ? (
-        <View style={styles.loading}>
-          <View style={styles.grid}>
-            <Skeleton height={110} borderRadius={12} style={{ width: '48%' }} />
-            <Skeleton height={110} borderRadius={12} style={{ width: '48%' }} />
-          </View>
-          <Skeleton height={240} borderRadius={12} style={{ marginTop: 20 }} />
-        </View>
+        <Screen>
+          <ResponsiveGrid>
+            <Skeleton height={130} borderRadius={24} />
+            <Skeleton height={130} borderRadius={24} />
+            <Skeleton height={130} borderRadius={24} />
+            <Skeleton height={130} borderRadius={24} />
+          </ResponsiveGrid>
+          <Skeleton height={240} borderRadius={24} />
+        </Screen>
       ) : (
-        <ScrollView contentContainerStyle={styles.body}>
-          <View style={styles.grid}>
-            <StatCard label="Students" value={totalStudents} icon="account-multiple" delay={30} />
-            <StatCard label="Companies" value={totalCompanies} icon="domain" accent="#7C3AED" delay={70} />
-            <StatCard label="Placement" value={`${placementPct.toFixed(1)}%`} icon="chart-bar" accent={Theme.colors.success} delay={110} />
-            <StatCard label="Avg CTC" value={`${avgCtc.toFixed(1)} LPA`} icon="cash" accent={Theme.colors.warning} delay={150} />
-          </View>
+        <Screen>
+          <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
+            <Text style={styles.eyebrow}>Placement Cell</Text>
+            <Text style={styles.heading}>Overview</Text>
+          </MotiView>
+
+          <ResponsiveGrid>
+            <StatCard index="01" label="Students" value={totalStudents} icon="account-multiple" tone="accent" />
+            <StatCard index="02" label="Companies" value={totalCompanies} icon="domain" tone="accent" />
+            <StatCard index="03" label="Placement" value={`${placementPct.toFixed(1)}%`} icon="chart-bar" tone="success" />
+            <StatCard index="04" label="Avg CTC" value={`${avgCtc.toFixed(1)} LPA`} icon="cash" tone="warning" />
+          </ResponsiveGrid>
 
           <TouchableOpacity activeOpacity={0.85} onPress={() => router.push('/(admin)/approvals' as any)}>
-            <MotiView from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 280, delay: 180 }}>
-              <Card style={styles.pendingCard} elevation={1}>
-                <Card.Content style={styles.pendingContent}>
+            <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 350, delay: 120 }}>
+              <View style={styles.pendingCard}>
+                <View>
+                  <Text style={styles.pendingEyebrow}>Action Needed</Text>
                   <Text style={styles.pendingTitle}>{pendingCount} companies pending approval</Text>
-                  <Text style={styles.pendingLink}>Review now →</Text>
-                </Card.Content>
-              </Card>
+                </View>
+                <Text style={styles.pendingLink}>Review now →</Text>
+              </View>
             </MotiView>
           </TouchableOpacity>
 
-          <MotiView from={{ opacity: 0, translateY: 14 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: 210 }}>
-            <Card style={styles.chartCard} elevation={1}>
-              <Card.Content>
-                <Text style={styles.chartTitle}>Branch-wise Placements</Text>
-                <BarChart
-                  data={{ labels: branchLabels, datasets: [{ data: branchValues }] }}
-                  width={Math.min(screenWidth - 64, 600)}
-                  height={220}
-                  yAxisLabel=""
-                  yAxisSuffix=""
-                  chartConfig={{
-                    backgroundColor: Theme.colors.background,
-                    backgroundGradientFrom: Theme.colors.background,
-                    backgroundGradientTo: Theme.colors.background,
-                    decimalPlaces: 0,
-                    color: (o = 1) => `rgba(30, 58, 138, ${o})`,
-                    labelColor: (o = 1) => `rgba(107, 114, 128, ${o})`,
-                    barPercentage: 0.6,
-                  }}
-                  style={styles.chart}
-                />
-              </Card.Content>
+          <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400, delay: 180 }}>
+            <Card>
+              <SectionHeader eyebrow="Analytics" title="Branch-wise Placements" />
+              <BarChart
+                data={{ labels: branchLabels, datasets: [{ data: branchValues }] }}
+                width={Math.min(screenWidth - 64, 560)}
+                height={220}
+                yAxisLabel=""
+                yAxisSuffix=""
+                chartConfig={{
+                  backgroundColor: C.card,
+                  backgroundGradientFrom: C.card,
+                  backgroundGradientTo: C.card,
+                  decimalPlaces: 0,
+                  color: (o = 1) => `rgba(31, 91, 255, ${o})`,
+                  labelColor: (o = 1) => `rgba(91, 98, 114, ${o})`,
+                  barPercentage: 0.6,
+                }}
+                style={styles.chart}
+              />
             </Card>
           </MotiView>
 
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <Text style={styles.link} onPress={() => router.push('/(admin)/broadcast' as any)}>Broadcast</Text>
-          </View>
-          <Card style={styles.feed} elevation={1}>
-            <Card.Content style={styles.feedContent}>
-              {recent.length === 0 ? (
-                <Text style={styles.empty}>No pending requests. All caught up.</Text>
-              ) : (
-                recent.map((r) => <ActivityFeedItem key={r.id} icon="domain-plus" message={r.message} timestamp={r.created_at} />)
-              )}
-            </Card.Content>
+          <SectionHeader
+            eyebrow="Feed"
+            title="Recent Activity"
+            action={
+              <Text style={styles.link} onPress={() => router.push('/(admin)/broadcast' as any)}>Broadcast</Text>
+            }
+          />
+          <Card>
+            {recent.length === 0 ? (
+              <EmptyState icon="check-decagram-outline" title="All caught up" hint="No pending requests." />
+            ) : (
+              recent.map((r) => <ActivityFeedItem key={r.id} icon="domain-plus" message={r.message} timestamp={r.created_at} />)
+            )}
           </Card>
-        </ScrollView>
+        </Screen>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Theme.colors.background },
-  loading: { padding: Theme.spacing.lg },
-  body: { padding: Theme.spacing.lg, gap: Theme.spacing.md },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Theme.spacing.sm },
-  pendingCard: { backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A', borderRadius: Theme.borderRadius.lg },
-  pendingContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  pendingTitle: { fontWeight: '700', color: Theme.colors.primaryText },
-  pendingLink: { color: Theme.colors.primaryAccent, fontWeight: '700' },
-  chartCard: { backgroundColor: Theme.colors.surface, borderWidth: 1, borderColor: Theme.colors.border, borderRadius: Theme.borderRadius.card },
-  chartTitle: { ...Theme.typography.sectionHeader, textAlign: 'center', marginBottom: Theme.spacing.md },
-  chart: { borderRadius: Theme.borderRadius.card, alignSelf: 'center' },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: Theme.colors.primaryText },
-  link: { color: Theme.colors.primaryAccent, fontWeight: '600', fontSize: 13 },
-  feed: { backgroundColor: Theme.colors.surface, borderWidth: 1, borderColor: Theme.colors.border, borderRadius: Theme.borderRadius.lg },
-  feedContent: { paddingVertical: 6 },
-  empty: { fontSize: 13, color: Theme.colors.secondaryText, textAlign: 'center', paddingVertical: 10 },
+  shell: { flex: 1, backgroundColor: C.paper },
+  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent },
+  heading: { fontSize: 30, fontWeight: '800', color: C.ink, letterSpacing: -1.2, marginTop: 4 },
+  pendingCard: { backgroundColor: C.ink, borderRadius: 24, padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, overflow: 'hidden' },
+  pendingEyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.amber },
+  pendingTitle: { fontWeight: '800', fontSize: 17, color: '#FFFFFF', letterSpacing: -0.4, marginTop: 4 },
+  pendingLink: { color: '#FFFFFF', fontWeight: '800', fontSize: 14, flexShrink: 0 },
+  chart: { borderRadius: 16, alignSelf: 'center', marginTop: 8 },
+  link: { color: C.accent, fontWeight: '700', fontSize: 14 },
 });

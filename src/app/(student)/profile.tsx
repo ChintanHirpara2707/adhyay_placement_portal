@@ -4,6 +4,7 @@ import { getInitials } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/authStore";
 import { Theme } from "@/theme/theme";
+import { C } from "@/theme/design";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -366,7 +367,7 @@ export default function StudentProfileScreen() {
                         value={value ? String(value) : ""}
                         error={!!errors.cgpa}
                         style={styles.input}
-                        outlineColor="#E2E8F0"
+                        outlineColor={C.line}
                         activeOutlineColor={Theme.colors.primaryAccent}
                       />
                       {errors.cgpa ? (
@@ -395,7 +396,7 @@ export default function StudentProfileScreen() {
                         value={value != null ? String(value) : ""}
                         error={!!errors.backlog_count}
                         style={styles.input}
-                        outlineColor="#E2E8F0"
+                        outlineColor={C.line}
                         activeOutlineColor={Theme.colors.primaryAccent}
                       />
                       {errors.backlog_count ? (
@@ -435,7 +436,7 @@ export default function StudentProfileScreen() {
                     value={value}
                     error={!!errors.full_name}
                     style={styles.input}
-                    outlineColor="#E2E8F0"
+                    outlineColor={C.line}
                     activeOutlineColor={Theme.colors.primaryAccent}
                   />
                   {errors.full_name ? (
@@ -462,7 +463,7 @@ export default function StudentProfileScreen() {
                     value={value}
                     error={!!errors.phone}
                     style={styles.input}
-                    outlineColor="#E2E8F0"
+                    outlineColor={C.line}
                     activeOutlineColor={Theme.colors.primaryAccent}
                   />
                   {errors.phone ? (
@@ -495,7 +496,7 @@ export default function StudentProfileScreen() {
                 onSubmitEditing={() => addSkill(skillInput)}
                 returnKeyType="done"
                 style={styles.input}
-                outlineColor="#E2E8F0"
+                outlineColor={C.line}
                 activeOutlineColor={Theme.colors.primaryAccent}
                 right={
                   <TextInput.Icon
@@ -578,7 +579,7 @@ export default function StudentProfileScreen() {
                     value={value}
                     error={!!errors.resume_link}
                     style={styles.input}
-                    outlineColor="#E2E8F0"
+                    outlineColor={C.line}
                     activeOutlineColor={Theme.colors.primaryAccent}
                   />
                   {errors.resume_link ? (
@@ -612,7 +613,7 @@ export default function StudentProfileScreen() {
             disabled={!canSave || saving}
             onPress={handleSubmit(handleSave)}
             buttonColor={Theme.colors.primaryAccent}
-            textColor="#ffffff"
+            textColor={C.card}
             style={styles.saveButton}
             contentStyle={styles.saveButtonContent}
           >
@@ -627,16 +628,16 @@ export default function StudentProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: C.paper,
   },
   loading: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: C.paper,
   },
   muted: {
-    color: "#64748B",
+    color: C.muted,
     marginTop: 12,
     fontSize: 14,
     fontWeight: "500",
@@ -649,10 +650,10 @@ const styles = StyleSheet.create({
 
   /* Hero Header Card */
   heroCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: C.card,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: C.line,
   },
   heroCardContent: {
     padding: 16,
@@ -677,7 +678,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   avatarText: {
-    color: "#FFFFFF",
+    color: C.card,
     fontWeight: "700",
     fontSize: 22,
   },
@@ -695,7 +696,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     color: Theme.colors.primaryAccent,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: C.accentSoft,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -704,8 +705,8 @@ const styles = StyleSheet.create({
   branchTag: {
     fontSize: 10,
     fontWeight: "600",
-    color: "#475569",
-    backgroundColor: "#F1F5F9",
+    color: C.muted,
+    backgroundColor: C.soft,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -713,19 +714,19 @@ const styles = StyleSheet.create({
   avatarName: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#0F172A",
+    color: C.ink,
   },
   avatarEmail: {
     fontSize: 13,
-    color: "#64748B",
+    color: C.muted,
   },
   meterContainer: {
     marginTop: 4,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: C.paper,
     borderRadius: 10,
     padding: 10,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
+    borderColor: C.soft,
   },
   completeRow: {
     flexDirection: "row",
@@ -736,7 +737,7 @@ const styles = StyleSheet.create({
   completeLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#334155",
+    color: C.ink,
   },
   completePercent: {
     fontSize: 12,
@@ -746,14 +747,14 @@ const styles = StyleSheet.create({
   bar: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: C.line,
   },
 
   /* Form Section Cards */
   card: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: C.card,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: C.line,
     borderRadius: 14,
   },
   cardContent: {
@@ -766,12 +767,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#0F172A",
+    color: C.ink,
     letterSpacing: -0.2,
   },
   sectionSubtitle: {
     fontSize: 12,
-    color: "#64748B",
+    color: C.muted,
     marginTop: 1,
   },
 
@@ -789,16 +790,16 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#475569",
+    color: C.muted,
     marginBottom: 5,
   },
   input: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: C.card,
     fontSize: 14,
   },
   dropdown: {
     borderRadius: 8,
-    borderColor: "#E2E8F0",
+    borderColor: C.line,
     borderWidth: 1,
   },
   dropdownContent: {
@@ -806,10 +807,10 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   menuContent: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: C.card,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: C.line,
   },
 
   /* Skills */
@@ -821,28 +822,28 @@ const styles = StyleSheet.create({
     minHeight: 32,
   },
   chip: {
-    backgroundColor: "#F1F5F9",
-    borderColor: "#E2E8F0",
+    backgroundColor: C.soft,
+    borderColor: C.line,
     borderWidth: 1,
     borderRadius: 8,
   },
   chipText: {
     fontSize: 12,
-    color: "#1E293B",
+    color: C.ink,
     fontWeight: "500",
   },
   emptySkillsText: {
     fontSize: 12,
-    color: "#94A3B8",
+    color: C.faint,
     fontStyle: "italic",
   },
 
   /* Resume Banners */
   resumeActiveBanner: {
     gap: 4,
-    backgroundColor: "#F0FDF4",
+    backgroundColor: C.successSoft,
     borderWidth: 1,
-    borderColor: "#BBF7D0",
+    borderColor: C.success,
     borderRadius: 8,
     padding: 12,
     marginBottom: 4,
@@ -856,12 +857,12 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#16A34A",
+    backgroundColor: C.success,
   },
   resumeBannerLabel: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#16A34A",
+    color: C.success,
     letterSpacing: 0.5,
   },
   resumeBannerLink: {
@@ -870,21 +871,21 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
   },
   resumeMissingBanner: {
-    backgroundColor: "#FFFBEB",
+    backgroundColor: C.warningSoft,
     borderWidth: 1,
-    borderColor: "#FDE68A",
+    borderColor: C.warning,
     borderRadius: 8,
     padding: 10,
     marginBottom: 4,
   },
   resumeMissingText: {
     fontSize: 12,
-    color: "#B45309",
+    color: C.warning,
     fontWeight: "500",
   },
   helperText: {
     fontSize: 11,
-    color: "#64748B",
+    color: C.muted,
     paddingHorizontal: 0,
     marginTop: 4,
   },
@@ -895,12 +896,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: C.card,
     borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
+    borderTopColor: C.line,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    shadowColor: "#000000",
+    shadowColor: C.ink,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05,
     shadowRadius: 6,
@@ -917,7 +918,7 @@ const styles = StyleSheet.create({
   footerStateLabel: {
     fontSize: 12,
     fontWeight: "500",
-    color: "#64748B",
+    color: C.muted,
   },
   saveButton: {
     borderRadius: 8,

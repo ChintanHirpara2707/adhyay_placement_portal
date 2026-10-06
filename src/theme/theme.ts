@@ -1,22 +1,23 @@
 import { MD3LightTheme } from 'react-native-paper';
+import { C } from './design';
 
 export const Theme = {
   colors: {
-    background: '#FFFFFF',
-    card: '#F9FAFB',
-    cardBackground: '#F9FAFB',
-    surface: '#F9FAFB',
-    primary: '#1E3A8A', // deep blue
-    primaryAccent: '#1E3A8A',
-    primaryText: '#111827',
-    textPrimary: '#111827',
-    secondaryText: '#6B7280',
-    textSecondary: '#6B7280',
-    success: '#10B981',
-    warning: '#F59E0B',
-    error: '#EF4444',
-    border: '#E5E7EB',
-    borderLight: '#F3F4F6',
+    background: C.paper,
+    card: C.card,
+    cardBackground: C.card,
+    surface: C.card,
+    primary: C.ink, // deep ink: primary buttons, headings
+    primaryAccent: C.accent, // links, active states, highlights
+    primaryText: C.ink,
+    textPrimary: C.ink,
+    secondaryText: C.muted,
+    textSecondary: C.muted,
+    success: C.success,
+    warning: C.warning,
+    error: C.danger,
+    border: C.line,
+    borderLight: C.line,
 
     // Buttons
     buttonDisabledBg: '#E5E7EB',
@@ -25,28 +26,28 @@ export const Theme = {
     // Status Pills
     status: {
       applied: {
-        bg: '#F3F4F6',
-        text: '#6B7280',
+        bg: '#EEF0F4',
+        text: C.muted,
       },
       round_cleared: {
-        bg: '#CCFBF1',
-        text: '#0F766E',
+        bg: C.tealSoft,
+        text: C.teal,
       },
       shortlisted: {
-        bg: '#DBEAFE',
-        text: '#1E3A8A',
+        bg: C.accentSoft,
+        text: C.accent,
       },
       interview_scheduled: {
-        bg: '#FEF3C7',
-        text: '#F59E0B',
+        bg: C.warningSoft,
+        text: C.warning,
       },
       selected: {
-        bg: '#D1FAE5',
-        text: '#10B981',
+        bg: C.successSoft,
+        text: C.success,
       },
       rejected: {
-        bg: '#FEE2E2',
-        text: '#EF4444',
+        bg: C.dangerSoft,
+        text: C.danger,
       },
     },
   },
@@ -67,28 +68,28 @@ export const Theme = {
     screenTitle: {
       fontSize: 24,
       fontWeight: '700' as const,
-      color: '#111827',
+      color: C.ink,
     },
     sectionHeader: {
       fontSize: 18,
       fontWeight: '700' as const,
-      color: '#111827',
+      color: C.ink,
     },
     cardTitle: {
       fontSize: 16,
       fontWeight: '700' as const,
-      color: '#111827',
+      color: C.ink,
     },
     body: {
       fontSize: 14,
       fontWeight: '400' as const,
-      color: '#111827',
+      color: C.ink,
       lineHeight: 20,
     },
     caption: {
       fontSize: 12,
       fontWeight: '400' as const,
-      color: '#6B7280',
+      color: C.muted,
     },
   },
   spacing: {
@@ -127,15 +128,15 @@ export const customPaperTheme = {
   ...MD3LightTheme,
   colors: {
     ...MD3LightTheme.colors,
-    primary: Theme.colors.primaryAccent,
+    primary: C.accent,
     onPrimary: '#FFFFFF',
-    background: Theme.colors.background,
-    surface: Theme.colors.cardBackground,
-    onSurface: Theme.colors.primaryText,
-    surfaceVariant: Theme.colors.background,
-    onSurfaceVariant: Theme.colors.secondaryText,
-    outline: Theme.colors.border,
-    error: Theme.colors.error,
+    background: C.paper,
+    surface: C.card,
+    onSurface: C.ink,
+    surfaceVariant: C.paper,
+    onSurfaceVariant: C.muted,
+    outline: C.line,
+    error: C.danger,
     elevation: {
       level0: 'transparent',
       level1: '#FFFFFF',

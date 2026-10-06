@@ -1,16 +1,25 @@
 import React, { useState, useCallback } from 'react';
 import { StyleSheet, View, FlatList, Alert, RefreshControl } from 'react-native';
-import { Card, Text } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 import { useFocusEffect } from 'expo-router';
 import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import StatusPill from '@/components/StatusPill';
-import { Theme } from '@/theme/theme';
+import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
 import { JobCardSkeleton } from '@/components/SkeletonLoader';
 import { WebOnlyDecorations } from '@/components/WebOnlyDecorations';
+import { StatusChip, statusToneFor, EmptyState } from '@/components/ui/kit';
 import { formatCTC } from '@/lib/format';
+
+const STATUS_LABELS: Record<string, string> = {
+  applied: 'Applied',
+  shortlisted: 'Shortlisted',
+  interview_scheduled: 'Interview Scheduled',
+  selected: 'Selected',
+  rejected: 'Rejected',
+  round_cleared: 'Round Cleared',
+};
 
 interface Application {
   id: string;
@@ -103,6 +112,11 @@ export default function ApplicationsScreen() {
       <WebOnlyDecorations />
       <TopNavbar title="Applications" subtitle="Track your status" />
 
+      <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
+        <Text style={styles.eyebrow}>Your Pipeline</Text>
+        <Text style={styles.heading}>Applications</Text>
+      </MotiView>
+
       <View style={styles.chips}>
         {(['all', 'active', 'round_cleared', 'selected', 'rejected'] as const).map((f) => (
           <Text key={f} onPress={() => setFilter(f)} style={[styles.chip, filter === f && styles.chipActive]}>
@@ -125,58 +139,40 @@ export default function ApplicationsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => fetchStudentApplications(true)}
-              tintColor={Theme.colors.primaryAccent}
-              colors={[Theme.colors.primaryAccent]}
+              tintColor={C.accent}
+              colors={[C.accent]}
             />
           }
-          renderItem={({ item, index }) => (
-            <MotiView
-              from={{ opacity: 0, translateY: 15 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{
-                type: 'timing',
-                duration: 300,
-                delay: Math.min(index * 60, 300),
-              }}
-            >
-              <Card style={styles.card} elevation={1}>
-                <Card.Content style={styles.cardContent}>
-                  <View style={styles.headerRow}>
-                    <Text style={styles.jobTitle}>
-                      {item.job_postings?.title || 'Unknown Position'}
-                    </Text>
-                    <StatusPill status={item.status} />
-                  </View>
-                  <Text style={styles.companyName}>
-                    🏢 {item.job_postings?.companies?.company_name || 'Unknown Company'}
-                  </Text>
-                  {item.status === 'round_cleared' ? (
-                    <Text style={styles.roundClearedNote}>
-                      Round Cleared — Next Round Coming Soon
-                    </Text>
-                  ) : null}
-                  <View style={styles.infoRow}>
-                    <View style={styles.infoTag}>
-                      <Text style={styles.infoTagText}>
-                        {formatCTC(item.job_postings?.ctc)}
-                      </Text>
-                    </View>
-                    <View style={styles.infoTag}>
-                      <Text style={styles.infoTagText}>
-                        Applied: {formatAppliedAt(item.applied_at)}
-                      </Text>
-                    </View>
-                  </View>
-                </Card.Content>
-              </Card>
-            </MotiView>
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <View style={styles.headerRow}>
+                <Text style={styles.jobTitle} numberOfLines={2}>
+                  {item.job_postings?.title || 'Unknown Position'}
+                </Text>
+                <StatusChip label={STATUS_LABELS[item.status] ?? item.status} tone={statusToneFor(item.status)} />
+              </View>
+              <Text style={styles.companyName} numberOfLines={1}>
+                {item.job_postings?.companies?.company_name || 'Unknown Company'}
+              </Text>
+              {item.status === 'round_cleared' ? (
+                <Text style={styles.roundClearedNote}>
+                  Round Cleared — Next Round Coming Soon
+                </Text>
+              ) : null}
+              <View style={styles.infoRow}>
+                <StatusChip label={formatCTC(item.job_postings?.ctc)} tone="accent" />
+                <Text style={styles.dateText}>
+                  Applied {formatAppliedAt(item.applied_at)}
+                </Text>
+              </View>
+            </View>
           )}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>
-                {filter === 'all' ? 'You have not submitted any applications yet.' : `No ${filter} applications.`}
-              </Text>
-            </View>
+            <EmptyState
+              icon="file-search-outline"
+              title={filter === 'all' ? 'No applications yet' : `No ${filter.replace('_', ' ')} applications`}
+              hint="Apply to a drive from the Jobs tab to start your pipeline."
+            />
           }
         />
       )}
@@ -187,102 +183,85 @@ export default function ApplicationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: C.paper,
   },
+  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent, paddingHorizontal: 16, paddingTop: 16 },
+  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, paddingHorizontal: 16, marginTop: 4 },
   listContainer: {
-    padding: Theme.spacing.md,
-    gap: Theme.spacing.sm,
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+    gap: 12,
   },
   card: {
-    backgroundColor: Theme.colors.surface,
-    borderRadius: Theme.borderRadius.lg,
+    backgroundColor: C.card,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: Theme.colors.border,
-    marginBottom: Theme.spacing.sm,
-  },
-  cardContent: {
-    padding: Theme.spacing.md,
+    borderColor: C.line,
+    padding: 18,
+    gap: 6,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
+    alignItems: 'flex-start',
+    gap: 8,
   },
   jobTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Theme.colors.primaryText,
+    fontSize: 17,
+    fontWeight: '800',
+    color: C.ink,
     flex: 1,
-    marginRight: 8,
+    minWidth: 0,
+    flexShrink: 1,
+    letterSpacing: -0.3,
   },
   companyName: {
     fontSize: 14,
-    fontWeight: '500',
-    color: Theme.colors.secondaryText,
-    marginBottom: Theme.spacing.sm,
+    color: C.muted,
   },
   roundClearedNote: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#0F766E',
-    backgroundColor: '#CCFBF1',
-    borderRadius: Theme.borderRadius.sm,
+    color: C.teal,
+    backgroundColor: C.tealSoft,
+    borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    marginBottom: Theme.spacing.sm,
     overflow: 'hidden',
+    alignSelf: 'flex-start',
   },
   infoRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Theme.spacing.sm,
-    marginTop: Theme.spacing.xs,
-  },
-  infoTag: {
-    backgroundColor: Theme.colors.background,
-    borderWidth: 1,
-    borderColor: Theme.colors.border,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: Theme.borderRadius.sm,
-  },
-  infoTagText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: Theme.colors.secondaryText,
-  },
-  emptyContainer: {
-    flex: 1,
-    padding: Theme.spacing.xl,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 60,
+    gap: 8,
+    marginTop: 2,
   },
-  emptyText: {
-    fontSize: 15,
-    color: Theme.colors.secondaryText,
-    textAlign: 'center',
+  dateText: {
+    fontSize: 12,
+    color: C.muted,
   },
   chips: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
-    paddingHorizontal: Theme.spacing.md,
-    paddingTop: Theme.spacing.sm,
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
   chip: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: Theme.borderRadius.pill,
-    borderWidth: 1,
-    borderColor: Theme.colors.border,
-    color: Theme.colors.secondaryText,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: C.line,
+    backgroundColor: C.card,
+    color: C.muted,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   chipActive: {
-    backgroundColor: Theme.colors.primaryAccent,
-    borderColor: Theme.colors.primaryAccent,
-    color: '#fff',
+    backgroundColor: C.ink,
+    borderColor: C.ink,
+    color: '#FFFFFF',
   },
 });

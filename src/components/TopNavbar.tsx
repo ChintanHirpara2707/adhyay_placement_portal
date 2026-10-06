@@ -1,12 +1,12 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Platform, Image } from 'react-native';
 import { Menu } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/lib/supabase';
 import { getInitials } from '@/lib/format';
-import { Theme } from '@/theme/theme';
+import { C, LOGO_RATIO } from '@/theme/design';
 
 interface TopNavbarProps {
   title?: string;
@@ -99,10 +99,10 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   };
 
   const rolePill = () => {
-    if (role === 'admin') return { label: 'Admin', color: Theme.colors.primaryAccent, bg: '#EFF6FF' };
-    if (role === 'company') return { label: 'Company', color: '#7C3AED', bg: '#F5F3FF' };
-    if (role === 'student') return { label: 'Student', color: '#059669', bg: '#ECFDF5' };
-    return { label: 'Portal', color: Theme.colors.secondaryText, bg: '#F3F4F6' };
+    if (role === 'admin') return { label: 'Admin', color: C.accent, bg: C.accentSoft };
+    if (role === 'company') return { label: 'Company', color: C.accent, bg: C.accentSoft };
+    if (role === 'student') return { label: 'Student', color: C.success, bg: C.successSoft };
+    return { label: 'Portal', color: C.muted, bg: '#EEF0F4' };
   };
   const pill = rolePill();
 
@@ -110,13 +110,16 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
     <View style={styles.bar}>
       <View style={styles.left}>
         {showBack ? (
-          <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()} activeOpacity={0.7}>
-            <MaterialCommunityIcons name="arrow-left" size={22} color={Theme.colors.primaryText} />
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()} activeOpacity={0.8}>
+            <MaterialCommunityIcons name="arrow-left" size={22} color={C.ink} />
           </TouchableOpacity>
         ) : (
-          <View style={styles.logo}>
-            <MaterialCommunityIcons name="school-outline" size={22} color={Theme.colors.primaryAccent} />
-          </View>
+          <Image
+            source={require('@/assets/images/logo.png')}
+            style={{ height: 30, width: 30 * LOGO_RATIO }}
+            resizeMode="contain"
+            accessibilityLabel="Adhyay logo"
+          />
         )}
         <View>
           <View style={styles.titleRow}>
@@ -130,8 +133,8 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
       </View>
 
       <View style={styles.right}>
-        <TouchableOpacity style={styles.iconBtn} onPress={goNotifications} activeOpacity={0.7}>
-          <MaterialCommunityIcons name="bell-outline" size={20} color={Theme.colors.primaryText} />
+        <TouchableOpacity style={styles.iconBtn} onPress={goNotifications} activeOpacity={0.8}>
+          <MaterialCommunityIcons name="bell-outline" size={20} color={C.ink} />
           {unreadCount > 0 ? (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
@@ -161,59 +164,51 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
 const styles = StyleSheet.create({
   bar: {
     height: 60,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: C.paper,
     borderBottomWidth: 1,
-    borderBottomColor: Theme.colors.border,
-    paddingHorizontal: Theme.spacing.md,
+    borderBottomColor: C.line,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     zIndex: 20,
     ...(Platform.OS === 'web' ? ({ position: 'sticky', top: 0 } as any) : null),
   },
-  left: { flexDirection: 'row', alignItems: 'center', gap: Theme.spacing.sm, flex: 1 },
-  logo: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    backgroundColor: '#EFF6FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  left: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, flexShrink: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { fontSize: 16, fontWeight: '700', color: Theme.colors.primaryText },
-  subtitle: { fontSize: 11, color: Theme.colors.secondaryText },
-  pill: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: Theme.borderRadius.pill },
-  pillText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
-  right: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  title: { fontSize: 17, fontWeight: '800', color: C.ink, letterSpacing: -0.4 },
+  subtitle: { fontSize: 11, color: C.muted },
+  pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  pillText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
+  right: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 },
   iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: Theme.colors.border,
-    backgroundColor: Theme.colors.surface,
+    borderColor: C.line,
+    backgroundColor: C.card,
     alignItems: 'center',
     justifyContent: 'center',
   },
   badge: {
     position: 'absolute',
-    top: -6,
-    right: -6,
+    top: -4,
+    right: -4,
     minWidth: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: Theme.colors.error,
+    backgroundColor: C.danger,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
   },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Theme.colors.primaryAccent,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: C.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },

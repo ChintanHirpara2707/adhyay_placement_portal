@@ -1,10 +1,13 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, View, ScrollView, Alert, RefreshControl } from 'react-native';
-import { Card, Text, Button, TextInput, SegmentedButtons } from 'react-native-paper';
+import { StyleSheet, View, Alert, RefreshControl } from 'react-native';
+import { Text, Button, TextInput, SegmentedButtons } from 'react-native-paper';
 import { useFocusEffect } from 'expo-router';
+import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
-import { Theme } from '@/theme/theme';
+import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
+import { Screen } from '@/components/ui/Screen';
+import { Card, SectionHeader, EmptyState } from '@/components/ui/kit';
 import { ActivityFeedItem } from '@/components/ActivityFeedItem';
 
 const BRANCHES = ['CSE', 'IT', 'ECE', 'ME', 'CE', 'EE'];
@@ -76,79 +79,81 @@ export default function AdminBroadcastScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.shell}>
       <TopNavbar title="Broadcast" subtitle="Notify students" />
-      <ScrollView
-        contentContainerStyle={styles.body}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={Theme.colors.primaryAccent} />}
+      <Screen
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={C.accent} />}
       >
-        <Card style={styles.card} elevation={1}>
-          <Card.Content style={styles.cardContent}>
-            <Text style={styles.label}>Message</Text>
-            <TextInput
-              mode="outlined"
-              multiline
-              numberOfLines={4}
-              placeholder="e.g. TCS interviews start Monday — check your schedule."
-              value={message}
-              onChangeText={setMessage}
-              style={styles.input}
-              maxLength={500}
-            />
-            <Text style={styles.count}>{message.length}/500</Text>
-            <Text style={styles.label}>Target audience</Text>
-            <SegmentedButtons
-              value={audience}
-              onValueChange={setAudience}
-              buttons={[{ value: 'all', label: 'All Students' }, { value: 'branch', label: 'Specific Branch' }]}
-            />
-            {audience === 'branch' ? (
-              <View style={styles.chips}>
-                {BRANCHES.map((b) => (
-                  <Text
-                    key={b}
-                    onPress={() => setBranch(b)}
-                    style={[styles.chip, branch === b && styles.chipActive]}
-                  >
-                    {b}
-                  </Text>
-                ))}
-              </View>
-            ) : null}
-            <Button mode="contained" loading={sending} disabled={sending || !message.trim()} onPress={handleBroadcast} buttonColor={Theme.colors.primaryAccent} textColor="#fff" style={styles.send}>
-              Send Broadcast
-            </Button>
-          </Card.Content>
+        <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
+          <Text style={styles.eyebrow}>Chapter 04 · Announce</Text>
+          <Text style={styles.heading}>Broadcast</Text>
+        </MotiView>
+        <Card>
+          <SectionHeader eyebrow="Compose" title="New announcement" />
+          <Text style={styles.label}>Message</Text>
+          <TextInput
+            mode="outlined"
+            multiline
+            numberOfLines={4}
+            placeholder="e.g. TCS interviews start Monday — check your schedule."
+            value={message}
+            onChangeText={setMessage}
+            style={styles.input}
+            outlineColor={C.line}
+            activeOutlineColor={C.accent}
+            outlineStyle={styles.outline}
+            maxLength={500}
+          />
+          <Text style={styles.count}>{message.length}/500</Text>
+          <Text style={styles.label}>Target audience</Text>
+          <SegmentedButtons
+            value={audience}
+            onValueChange={setAudience}
+            buttons={[{ value: 'all', label: 'All Students' }, { value: 'branch', label: 'Specific Branch' }]}
+          />
+          {audience === 'branch' ? (
+            <View style={styles.chips}>
+              {BRANCHES.map((b) => (
+                <Text
+                  key={b}
+                  onPress={() => setBranch(b)}
+                  style={[styles.chip, branch === b && styles.chipActive]}
+                >
+                  {b}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+          <Button mode="contained" loading={sending} disabled={sending || !message.trim()} onPress={handleBroadcast} buttonColor={C.ink} textColor="#FFFFFF" style={styles.send} contentStyle={styles.sendContent} labelStyle={styles.sendLabel}>
+            Send Broadcast
+          </Button>
         </Card>
 
-        <Text style={styles.section}>Sent history</Text>
-        <Card style={styles.card} elevation={1}>
-          <Card.Content style={styles.feedContent}>
-            {history.length === 0 ? (
-              <Text style={styles.empty}>No broadcasts sent yet.</Text>
-            ) : (
-              history.map((h) => <ActivityFeedItem key={h.id} icon="bullhorn-outline" message={h.message} timestamp={h.created_at} />)
-            )}
-          </Card.Content>
+        <SectionHeader eyebrow="History" title="Sent announcements" />
+        <Card>
+          {history.length === 0 ? (
+            <EmptyState icon="bullhorn-outline" title="Nothing sent yet" hint="Your broadcasts will appear here." />
+          ) : (
+            history.map((h) => <ActivityFeedItem key={h.id} icon="bullhorn-outline" message={h.message} timestamp={h.created_at} />)
+          )}
         </Card>
-      </ScrollView>
+      </Screen>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Theme.colors.background },
-  body: { padding: Theme.spacing.md, gap: Theme.spacing.md, paddingBottom: 24 },
-  card: { backgroundColor: Theme.colors.surface, borderWidth: 1, borderColor: Theme.colors.border, borderRadius: Theme.borderRadius.lg },
-  cardContent: { gap: 8 },
-  label: { fontSize: 12, fontWeight: '600', color: Theme.colors.secondaryText },
-  input: { backgroundColor: Theme.colors.background, fontSize: 14 },
-  count: { fontSize: 11, color: Theme.colors.secondaryText, textAlign: 'right' },
+  shell: { flex: 1, backgroundColor: C.paper },
+  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent },
+  heading: { fontSize: 30, fontWeight: '800', color: C.ink, letterSpacing: -1.2, marginTop: 4 },
+  label: { fontSize: 13, fontWeight: '700', color: C.ink, marginTop: 8 },
+  input: { backgroundColor: C.card, fontSize: 16, marginTop: 6 },
+  outline: { borderRadius: 14, borderWidth: 1.5 },
+  count: { fontSize: 11, color: C.faint, textAlign: 'right' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
-  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Theme.borderRadius.pill, borderWidth: 1, borderColor: Theme.colors.border, color: Theme.colors.secondaryText, fontSize: 12, fontWeight: '600' },
-  chipActive: { backgroundColor: Theme.colors.primaryAccent, borderColor: Theme.colors.primaryAccent, color: '#fff' },
-  send: { borderRadius: Theme.borderRadius.button, marginTop: 8 },
-  section: { fontSize: 16, fontWeight: '700', color: Theme.colors.primaryText, marginTop: 4 },
-  feedContent: { paddingVertical: 6 },
-  empty: { fontSize: 13, color: Theme.colors.secondaryText, textAlign: 'center', paddingVertical: 10 },
+  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1.5, borderColor: C.line, backgroundColor: C.card, color: C.muted, fontSize: 12, fontWeight: '700' },
+  chipActive: { backgroundColor: C.ink, borderColor: C.ink, color: '#FFFFFF' },
+  send: { borderRadius: 14, marginTop: 12 },
+  sendContent: { paddingVertical: 8 },
+  sendLabel: { fontSize: 16, fontWeight: '700' },
 });

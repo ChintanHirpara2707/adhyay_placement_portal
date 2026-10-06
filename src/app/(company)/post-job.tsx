@@ -1,8 +1,9 @@
 import { TopNavbar } from '@/components/TopNavbar';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { Theme } from '@/theme/theme';
+import { C } from '@/theme/design';
 import { useRouter } from 'expo-router';
+import { MotiView } from 'moti';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
@@ -185,14 +186,18 @@ export default function PostJobScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: Theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: C.paper }}>
       <TopNavbar title="Post Job" subtitle="Create opening" />
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-        <Card style={styles.card} elevation={1}>
+        <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
+          <Text style={styles.eyebrow}>New Opening</Text>
+          <Text style={styles.heading}>Post a job</Text>
+        </MotiView>
+        <Card style={styles.card} elevation={0}>
           <Card.Content style={styles.cardContent}>
             <Controller
               control={control}
@@ -207,9 +212,9 @@ export default function PostJobScreen() {
                     value={value}
                     error={!!errors.title}
                     style={styles.input}
-                    outlineColor={Theme.colors.border}
-                    activeOutlineColor={Theme.colors.primary}
-                    outlineStyle={{ borderRadius: Theme.borderRadius.input }}
+                    outlineColor={C.line}
+                    activeOutlineColor={C.accent}
+                    outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
                   />
                   {errors.title && (
                     <HelperText type="error" visible={!!errors.title} style={styles.errorText}>
@@ -235,9 +240,9 @@ export default function PostJobScreen() {
                     value={value}
                     error={!!errors.description}
                     style={styles.input}
-                    outlineColor={Theme.colors.border}
-                    activeOutlineColor={Theme.colors.primary}
-                    outlineStyle={{ borderRadius: Theme.borderRadius.input }}
+                    outlineColor={C.line}
+                    activeOutlineColor={C.accent}
+                    outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
                   />
                   {errors.description && (
                     <HelperText type="error" visible={!!errors.description} style={styles.errorText}>
@@ -262,9 +267,9 @@ export default function PostJobScreen() {
                     value={value === 0 ? '' : value.toString()}
                     error={!!errors.ctc}
                     style={styles.input}
-                    outlineColor={Theme.colors.border}
-                    activeOutlineColor={Theme.colors.primary}
-                    outlineStyle={{ borderRadius: Theme.borderRadius.input }}
+                    outlineColor={C.line}
+                    activeOutlineColor={C.accent}
+                    outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
                   />
                   {errors.ctc && (
                     <HelperText type="error" visible={!!errors.ctc} style={styles.errorText}>
@@ -289,9 +294,9 @@ export default function PostJobScreen() {
                     value={value === 0 ? '' : value.toString()}
                     error={!!errors.min_cgpa}
                     style={styles.input}
-                    outlineColor={Theme.colors.border}
-                    activeOutlineColor={Theme.colors.primary}
-                    outlineStyle={{ borderRadius: Theme.borderRadius.input }}
+                    outlineColor={C.line}
+                    activeOutlineColor={C.accent}
+                    outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
                   />
                   {errors.min_cgpa && (
                     <HelperText type="error" visible={!!errors.min_cgpa} style={styles.errorText}>
@@ -316,9 +321,9 @@ export default function PostJobScreen() {
                     value={value}
                     error={!!errors.deadline}
                     style={styles.input}
-                    outlineColor={Theme.colors.border}
-                    activeOutlineColor={Theme.colors.primary}
-                    outlineStyle={{ borderRadius: Theme.borderRadius.input }}
+                    outlineColor={C.line}
+                    activeOutlineColor={C.accent}
+                    outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
                   />
                   {errors.deadline && (
                     <HelperText type="error" visible={!!errors.deadline} style={styles.errorText}>
@@ -338,7 +343,7 @@ export default function PostJobScreen() {
                   <Switch
                     value={value}
                     onValueChange={onChange}
-                    color={Theme.colors.primary}
+                    color={C.accent}
                   />
                 )}
               />
@@ -360,7 +365,7 @@ export default function PostJobScreen() {
                           key={branch}
                           label={branch}
                           status={isChecked ? 'checked' : 'unchecked'}
-                          color={Theme.colors.primary}
+                          color={C.accent}
                           onPress={() => {
                             if (isChecked) {
                               onChange(value.filter((b) => b !== branch));
@@ -418,9 +423,9 @@ export default function PostJobScreen() {
                           value={name}
                           error={!!errors.round_names}
                           style={styles.input}
-                          outlineColor={Theme.colors.border}
-                          activeOutlineColor={Theme.colors.primary}
-                          outlineStyle={{ borderRadius: Theme.borderRadius.input }}
+                          outlineColor={C.line}
+                          activeOutlineColor={C.accent}
+                          outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
                         />
                         <Text style={[styles.inputLabel, { marginTop: 6 }]}>Round {i + 1} date (YYYY-MM-DD, optional)</Text>
                         <TextInput
@@ -429,9 +434,9 @@ export default function PostJobScreen() {
                           onChangeText={(t) => setRoundDate(i, t)}
                           value={(watchedDates ?? [])[i] ?? ''}
                           style={styles.input}
-                          outlineColor={Theme.colors.border}
-                          activeOutlineColor={Theme.colors.primary}
-                          outlineStyle={{ borderRadius: Theme.borderRadius.input }}
+                          outlineColor={C.line}
+                          activeOutlineColor={C.accent}
+                          outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
                         />
                       </View>
                     ))}
@@ -472,9 +477,9 @@ export default function PostJobScreen() {
                           value={role}
                           error={!!errors.job_profiles}
                           style={[styles.input, styles.profileInput]}
-                          outlineColor={Theme.colors.border}
-                          activeOutlineColor={Theme.colors.primary}
-                          outlineStyle={{ borderRadius: Theme.borderRadius.input }}
+                          outlineColor={C.line}
+                          activeOutlineColor={C.accent}
+                          outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
                         />
                         {(value ?? []).length > 1 ? (
                           <Button mode="outlined" compact onPress={() => onChange((value ?? []).filter((_, j) => j !== i))} style={styles.stepBtn}>
@@ -511,9 +516,9 @@ export default function PostJobScreen() {
                     value={value}
                     error={!!errors.stipend}
                     style={styles.input}
-                    outlineColor={Theme.colors.border}
-                    activeOutlineColor={Theme.colors.primary}
-                    outlineStyle={{ borderRadius: Theme.borderRadius.input }}
+                    outlineColor={C.line}
+                    activeOutlineColor={C.accent}
+                    outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
                   />
                   {errors.stipend && (
                     <HelperText type="error" visible={!!errors.stipend} style={styles.errorText}>
@@ -539,9 +544,9 @@ export default function PostJobScreen() {
                     value={value}
                     error={!!errors.bond_years}
                     style={styles.input}
-                    outlineColor={Theme.colors.border}
-                    activeOutlineColor={Theme.colors.primary}
-                    outlineStyle={{ borderRadius: Theme.borderRadius.input }}
+                    outlineColor={C.line}
+                    activeOutlineColor={C.accent}
+                    outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
                   />
                   {errors.bond_years && (
                     <HelperText type="error" visible={!!errors.bond_years} style={styles.errorText}>
@@ -566,9 +571,9 @@ export default function PostJobScreen() {
                     value={value}
                     error={!!errors.location}
                     style={styles.input}
-                    outlineColor={Theme.colors.border}
-                    activeOutlineColor={Theme.colors.primary}
-                    outlineStyle={{ borderRadius: Theme.borderRadius.input }}
+                    outlineColor={C.line}
+                    activeOutlineColor={C.accent}
+                    outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
                   />
                   {errors.location && (
                     <HelperText type="error" visible={!!errors.location} style={styles.errorText}>
@@ -585,7 +590,7 @@ export default function PostJobScreen() {
               disabled={loading || isSubmitting}
               onPress={handleSubmit(onSubmit)}
               style={styles.button}
-              buttonColor={Theme.colors.primary}
+              buttonColor={C.ink}
               textColor="#FFFFFF"
             >
               Publish Job Posting
@@ -601,59 +606,65 @@ export default function PostJobScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: C.paper,
   },
   scrollContainer: {
-    padding: Theme.spacing.lg,
+    padding: 16,
+    paddingBottom: 32,
+    gap: 12,
   },
+  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent },
+  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, marginTop: 4 },
   card: {
-    backgroundColor: Theme.colors.card,
-    borderRadius: Theme.borderRadius.card,
+    backgroundColor: C.card,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: Theme.colors.border,
+    borderColor: C.line,
   },
   cardContent: {
-    gap: Theme.spacing.sm,
-    padding: Theme.spacing.md,
+    gap: 8,
+    padding: 20,
   },
   inputContainer: {
     marginBottom: 4,
   },
   inputLabel: {
-    fontSize: Theme.typography.sizes.caption,
-    fontWeight: Theme.typography.weights.medium as any,
-    color: Theme.colors.textSecondary,
-    marginBottom: 4,
+    fontSize: 13,
+    fontWeight: '700',
+    color: C.ink,
+    marginBottom: 6,
   },
   input: {
-    backgroundColor: Theme.colors.background,
-    fontSize: Theme.typography.sizes.body,
+    backgroundColor: C.card,
+    fontSize: 16,
   },
   errorText: {
-    color: Theme.colors.error,
-    fontSize: Theme.typography.sizes.caption,
+    color: C.danger,
+    fontSize: 12,
     marginTop: 2,
   },
   switchContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: Theme.spacing.sm,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: Theme.colors.border,
+    borderBottomColor: C.line,
   },
   switchLabel: {
-    fontSize: Theme.typography.sizes.body,
-    color: Theme.colors.textPrimary,
+    fontSize: 15,
+    color: C.ink,
+    fontWeight: '600',
   },
   checkboxSection: {
-    marginTop: Theme.spacing.sm,
+    marginTop: 12,
     gap: 4,
   },
   checkboxSectionTitle: {
-    fontWeight: Theme.typography.weights.bold as any,
-    fontSize: Theme.typography.sizes.cardTitle,
-    color: Theme.colors.textPrimary,
+    fontWeight: '800',
+    fontSize: 16,
+    letterSpacing: -0.3,
+    color: C.ink,
     marginBottom: 4,
   },
   checkboxGrid: {
@@ -665,14 +676,14 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   checkboxLabel: {
-    fontSize: Theme.typography.sizes.body,
-    color: Theme.colors.textPrimary,
+    fontSize: 15,
+    color: C.ink,
   },
   stepperRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: Theme.spacing.sm,
+    paddingVertical: 12,
   },
   stepper: {
     flexDirection: 'row',
@@ -680,13 +691,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   stepBtn: {
-    borderRadius: Theme.borderRadius.button,
-    minWidth: 40,
+    borderRadius: 14,
+    minWidth: 44,
   },
   stepValue: {
     fontSize: 18,
-    fontWeight: '700',
-    color: Theme.colors.primaryText,
+    fontWeight: '800',
+    color: C.ink,
     minWidth: 28,
     textAlign: 'center',
   },
@@ -703,12 +714,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   addRoleBtn: {
-    borderRadius: Theme.borderRadius.button,
+    borderRadius: 14,
     alignSelf: 'flex-start',
     marginTop: 4,
   },
   button: {
-    marginTop: Theme.spacing.lg,
-    borderRadius: Theme.borderRadius.button,
+    marginTop: 20,
+    borderRadius: 14,
   },
 });

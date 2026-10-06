@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, FlatList, Alert } from 'react-native';
-import { Card, Text, Button, ActivityIndicator, Divider, Searchbar } from 'react-native-paper';
+import { StyleSheet, View, ScrollView, Alert } from 'react-native';
+import { Text, Button, ActivityIndicator, Searchbar } from 'react-native-paper';
+import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
-import { Theme } from '@/theme/theme';
+import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
-import { formatCTC } from '@/lib/format';
+import { DataTable } from '@/components/ui/DataTable';
+import { StatusChip, EmptyState } from '@/components/ui/kit';
+import { formatCTC, formatDeadline } from '@/lib/format';
 
 interface JobPosting {
   id: string;
@@ -93,113 +96,81 @@ export default function JobsScreen() {
     }
   };
 
-  const formatDeadline = (dateString: string) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
-  };
-
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={Theme.colors.primary} />
+        <ActivityIndicator size="large" color={C.accent} />
         <Text style={styles.loadingText}>Fetching all job postings...</Text>
       </View>
     );
   }
 
+  const filtered = searchFilter(jobs);
+
   return (
     <View style={styles.container}>
       <TopNavbar title="All Jobs" subtitle="Moderate postings" />
+      <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
+        <Text style={styles.eyebrow}>Chapter 02 · Drives</Text>
+        <Text style={styles.heading}>All postings</Text>
+        <Text style={styles.count}>{filtered.length} total</Text>
+      </MotiView>
       <View style={styles.searchWrap}>
-        <Searchbar placeholder="Search title or company" value={query} onChangeText={setQuery} style={styles.search} inputStyle={{ fontSize: 14 }} />
+        <Searchbar placeholder="Search title or company" value={query} onChangeText={setQuery} style={styles.search} inputStyle={styles.searchInput} />
       </View>
-      <FlatList
-        data={searchFilter(jobs)}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
-        renderItem={({ item }) => (
-          <Card style={styles.card} elevation={1}>
-            <Card.Content style={styles.cardContent}>
-              <View style={styles.headerRow}>
-                <View style={styles.titleInfo}>
-                  <Text style={styles.jobTitle}>
-                    {item.title}
-                  </Text>
-                  <Text style={styles.companyName}>
-                    {item.companies?.company_name || 'Unknown Company'}
-                  </Text>
+      <ScrollView contentContainerStyle={styles.listContainer}>
+        <DataTable
+          columns={[
+            {
+              key: 'job',
+              title: 'Job',
+              flex: 2,
+              render: (item) => (
+                <View>
+                  <Text style={styles.jobTitle} numberOfLines={1}>{item.title}</Text>
+                  <Text style={styles.companyName} numberOfLines={1}>{item.companies?.company_name || 'Unknown Company'}</Text>
                 </View>
-                <View
-                  style={[
-                    styles.statusPill,
-                    {
-                      backgroundColor: item.status === 'open' ? '#D1FAE5' : '#FEE2E2',
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.statusPillText,
-                      {
-                        color: item.status === 'open' ? Theme.colors.success : Theme.colors.error,
-                      },
-                    ]}
-                  >
-                    {item.status.toUpperCase()}
-                  </Text>
-                </View>
-              </View>
-
-              <Divider style={styles.divider} />
-
-              <View style={styles.detailsGrid}>
-                <Text style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>CTC: </Text>
-                  <Text style={styles.boldText}>{formatCTC(item.ctc)}</Text>
+              ),
+            },
+            {
+              key: 'status',
+              title: 'Status',
+              flex: 1,
+              render: (item) => (
+                <StatusChip label={item.status === 'open' ? 'Open' : 'Closed'} tone={item.status === 'open' ? 'success' : 'muted'} />
+              ),
+            },
+            {
+              key: 'meta',
+              title: 'Details',
+              flex: 2,
+              render: (item) => (
+                <Text style={styles.metaText} numberOfLines={3}>
+                  {formatCTC(item.ctc)} · {(item as any).applications?.length ?? 0} applicants · CGPA {item.min_cgpa} · {formatDeadline(item.deadline)}
                 </Text>
-                <Text style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Applicants: </Text>
-                  <Text style={styles.boldText}>{(item as any).applications?.length ?? 0}</Text>
-                </Text>
-                <Text style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Min CGPA: </Text>
-                  <Text style={styles.boldText}>{item.min_cgpa}</Text>
-                </Text>
-                <Text style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Deadline: </Text>
-                  <Text style={styles.boldText}>{formatDeadline(item.deadline)}</Text>
-                </Text>
-                <Text style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Branches: </Text>
-                  <Text style={styles.boldText}>
-                    {item.eligible_branches ? item.eligible_branches.join(', ') : 'All'}
-                  </Text>
-                </Text>
-              </View>
-
-              {item.status === 'open' && (
-                <Button
-                  mode="outlined"
-                  onPress={() => handleClosePosting(item.id)}
-                  style={styles.closeBtn}
-                  textColor={Theme.colors.error}
-                  icon="close-box"
-                >
-                  Close Posting
-                </Button>
-              )}
-            </Card.Content>
-          </Card>
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              No job postings exist in the database.
-            </Text>
-          </View>
-        }
-      />
+              ),
+            },
+            {
+              key: 'action',
+              title: '',
+              flex: 1,
+              render: (item) =>
+                item.status === 'open' ? (
+                  <Button mode="outlined" compact onPress={() => handleClosePosting(item.id)} style={styles.closeBtn} textColor={C.danger} icon="close-box">
+                    Close
+                  </Button>
+                ) : (
+                  <Text style={styles.metaText}>—</Text>
+                ),
+            },
+          ]}
+          rows={filtered}
+          keyOf={(item) => item.id}
+        />
+        {filtered.length === 0 ? (
+          <EmptyState icon="briefcase-search-outline" title="No postings found" hint="No job postings exist in the database." />
+        ) : null}
+      </ScrollView>
     </View>
   );
 }
@@ -207,103 +178,57 @@ export default function JobsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: C.paper,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: Theme.spacing.lg,
-    backgroundColor: Theme.colors.background,
+    padding: 16,
+    backgroundColor: C.paper,
   },
   loadingText: {
-    marginTop: Theme.spacing.md,
-    color: Theme.colors.textSecondary,
-    fontSize: Theme.typography.sizes.body,
+    marginTop: 12,
+    color: C.muted,
+    fontSize: 14,
   },
+  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent, paddingHorizontal: 16, paddingTop: 16 },
+  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, paddingHorizontal: 16, marginTop: 4 },
+  count: { fontSize: 13, color: C.muted, paddingHorizontal: 16, marginTop: 4 },
   listContainer: {
-    padding: Theme.spacing.lg,
-    gap: Theme.spacing.md,
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+    gap: 12,
   },
   searchWrap: {
-    paddingHorizontal: Theme.spacing.lg,
-    paddingTop: Theme.spacing.sm,
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
   search: {
-    backgroundColor: Theme.colors.surface,
+    backgroundColor: C.card,
     borderWidth: 1,
-    borderColor: Theme.colors.border,
+    borderColor: C.line,
+    borderRadius: 14,
     elevation: 0,
   },
-  card: {
-    backgroundColor: Theme.colors.card,
-    borderRadius: Theme.borderRadius.card,
-    borderWidth: 1,
-    borderColor: Theme.colors.border,
-  },
-  cardContent: {
-    gap: Theme.spacing.sm,
-    padding: Theme.spacing.md,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: Theme.spacing.sm,
-  },
-  titleInfo: {
-    flex: 1,
-    gap: 2,
-  },
+  searchInput: { fontSize: 16 },
   jobTitle: {
-    fontSize: Theme.typography.sizes.cardTitle,
-    fontWeight: Theme.typography.weights.bold as any,
-    color: Theme.colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '800',
+    color: C.ink,
   },
   companyName: {
-    fontSize: Theme.typography.sizes.body,
-    color: Theme.colors.textSecondary,
+    fontSize: 13,
+    color: C.muted,
   },
-  statusPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: Theme.borderRadius.pill,
-  },
-  statusPillText: {
-    fontSize: Theme.typography.sizes.caption,
-    fontWeight: Theme.typography.weights.semibold as any,
-  },
-  divider: {
-    marginVertical: 4,
-    backgroundColor: Theme.colors.border,
-  },
-  detailsGrid: {
-    gap: 4,
-  },
-  detailRow: {
-    fontSize: Theme.typography.sizes.body,
-    color: Theme.colors.textSecondary,
-  },
-  detailLabel: {
-    color: Theme.colors.textSecondary,
-  },
-  boldText: {
-    fontWeight: Theme.typography.weights.semibold as any,
-    color: Theme.colors.textPrimary,
+  metaText: {
+    fontSize: 13,
+    color: C.muted,
+    lineHeight: 20,
   },
   closeBtn: {
-    marginTop: Theme.spacing.sm,
-    borderRadius: Theme.borderRadius.button,
-    borderColor: Theme.colors.error,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    padding: Theme.spacing.xl,
-    marginTop: 60,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: Theme.colors.textSecondary,
-    fontSize: Theme.typography.sizes.body,
+    borderRadius: 14,
+    borderColor: C.danger,
+    alignSelf: 'flex-start',
   },
 });

@@ -2,7 +2,7 @@ import { TopNavbar } from "@/components/TopNavbar";
 import { getInitials } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/authStore";
-import { Theme } from "@/theme/theme";
+import { C } from "@/theme/design";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -505,7 +505,7 @@ export default function ApplicantDetailScreen() {
                       <Button
                         mode="text"
                         compact
-                        textColor={Theme.colors.primaryAccent}
+                        textColor={C.accent}
                       >
                         View
                       </Button>
@@ -552,8 +552,8 @@ export default function ApplicantDetailScreen() {
                       loading={marking}
                       disabled={marking}
                       onPress={handleMarkSelected}
-                      buttonColor={Theme.colors.success}
-                      textColor="#FFFFFF"
+                      buttonColor={C.success}
+                      textColor={C.card}
                       style={styles.markBtn}
                     >
                       Selected
@@ -563,7 +563,7 @@ export default function ApplicantDetailScreen() {
                       loading={marking}
                       disabled={marking}
                       onPress={handleMarkRejected}
-                      textColor={Theme.colors.error}
+                      textColor={C.danger}
                       style={styles.markBtn}
                     >
                       Rejected
@@ -647,11 +647,11 @@ export default function ApplicantDetailScreen() {
                           height: 48,
                           padding: "0 12px",
                           borderRadius: 8,
-                          border: `1px solid ${errors.date_time && !selectedDateStr ? "#EF4444" : "#CBD5E1"}`,
-                          backgroundColor: "#FFFFFF",
+                          border: `1px solid ${errors.date_time && !selectedDateStr ? C.danger : C.line}`,
+                          backgroundColor: C.card,
                           fontSize: 14,
                           fontFamily: "inherit",
-                          color: "#0F172A",
+                          color: C.ink,
                           outline: "none",
                           cursor: "pointer",
                         }}
@@ -666,10 +666,10 @@ export default function ApplicantDetailScreen() {
                       style={styles.input}
                       outlineColor={
                         errors.date_time && !selectedDateStr
-                          ? "#EF4444"
-                          : "#E2E8F0"
+                          ? C.danger
+                          : C.line
                       }
-                      activeOutlineColor={Theme.colors.primaryAccent}
+                      activeOutlineColor={C.accent}
                       right={<TextInput.Icon icon="calendar" />}
                     />
                   )}
@@ -718,8 +718,8 @@ export default function ApplicantDetailScreen() {
                     value={selectedTimeSlot}
                     onChangeText={(txt) => handleSelectSlot(txt.trim())}
                     style={styles.customTimeInput}
-                    outlineColor="#E2E8F0"
-                    activeOutlineColor={Theme.colors.primaryAccent}
+                    outlineColor={C.line}
+                    activeOutlineColor={C.accent}
                   />
 
                   {selectedDateStr && selectedTimeSlot ? (
@@ -752,8 +752,8 @@ export default function ApplicantDetailScreen() {
                         onChangeText={onChange}
                         value={value}
                         style={styles.input}
-                        outlineColor="#E2E8F0"
-                        activeOutlineColor={Theme.colors.primaryAccent}
+                        outlineColor={C.line}
+                        activeOutlineColor={C.accent}
                       />
                     </View>
                   )}
@@ -769,8 +769,8 @@ export default function ApplicantDetailScreen() {
                       "Please ensure interview round, date, and a time slot are selected.",
                     ),
                   )}
-                  buttonColor={Theme.colors.primaryAccent}
-                  textColor="#FFFFFF"
+                  buttonColor={C.ink}
+                  textColor={C.card}
                   style={styles.submit}
                   contentStyle={styles.submitContent}
                 >
@@ -788,7 +788,7 @@ export default function ApplicantDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: C.paper,
   },
   body: {
     padding: 16,
@@ -801,15 +801,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   muted: {
-    color: "#64748B",
+    color: C.muted,
     fontSize: 14,
     fontWeight: "500",
   },
   card: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: C.card,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    borderRadius: 14,
+    borderColor: C.line,
+    borderRadius: 24,
   },
   cardContent: {
     padding: 16,
@@ -824,12 +824,12 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: Theme.colors.primaryAccent,
+    backgroundColor: C.ink,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
-    color: "#FFFFFF",
+    color: C.card,
     fontWeight: "700",
     fontSize: 20,
   },
@@ -846,8 +846,8 @@ const styles = StyleSheet.create({
   statusBadge: {
     fontSize: 10,
     fontWeight: "700",
-    color: Theme.colors.primaryAccent,
-    backgroundColor: "#EEF2FF",
+    color: C.accent,
+    backgroundColor: C.accentSoft,
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 4,
@@ -856,8 +856,8 @@ const styles = StyleSheet.create({
   branchTag: {
     fontSize: 10,
     fontWeight: "600",
-    color: "#475569",
-    backgroundColor: "#F1F5F9",
+    color: C.muted,
+    backgroundColor: C.soft,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -865,23 +865,23 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#0F172A",
+    color: C.ink,
   },
   subJob: {
     fontSize: 12,
-    color: "#64748B",
+    color: C.muted,
   },
   subJobTitle: {
     fontWeight: "600",
-    color: "#334155",
+    color: C.ink,
   },
   statsRow: {
     flexDirection: "row",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: C.paper,
     borderRadius: 10,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
+    borderColor: C.soft,
     alignItems: "center",
   },
   statBox: {
@@ -891,18 +891,18 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: "60%",
-    backgroundColor: "#E2E8F0",
+    backgroundColor: C.line,
   },
   statLabel: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#64748B",
+    color: C.muted,
     marginBottom: 2,
   },
   statVal: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#0F172A",
+    color: C.ink,
   },
   skillsSection: {
     marginTop: 4,
@@ -914,14 +914,14 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   skillChip: {
-    backgroundColor: "#F1F5F9",
-    borderColor: "#E2E8F0",
+    backgroundColor: C.soft,
+    borderColor: C.line,
     borderWidth: 1,
     borderRadius: 8,
   },
   skillText: {
     fontSize: 11,
-    color: "#334155",
+    color: C.ink,
   },
   resumeSection: {
     marginTop: 4,
@@ -929,9 +929,9 @@ const styles = StyleSheet.create({
   resumeBox: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F0FDF4",
+    backgroundColor: C.successSoft,
     borderWidth: 1,
-    borderColor: "#BBF7D0",
+    borderColor: C.success,
     borderRadius: 10,
     padding: 10,
     marginTop: 6,
@@ -941,7 +941,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#DCFCE7",
+    backgroundColor: C.successSoft,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -954,23 +954,23 @@ const styles = StyleSheet.create({
   resumeTitle: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#15803D",
+    color: C.success,
   },
   resumeSubtitle: {
     fontSize: 11,
-    color: "#166534",
+    color: C.success,
   },
   emptyResumeBox: {
-    backgroundColor: "#FFFBEB",
+    backgroundColor: C.warningSoft,
     borderWidth: 1,
-    borderColor: "#FDE68A",
+    borderColor: C.warning,
     borderRadius: 10,
     padding: 12,
     marginTop: 6,
   },
   emptyResumeText: {
     fontSize: 12,
-    color: "#B45309",
+    color: C.warning,
     fontWeight: "500",
   },
   sectionHeader: {
@@ -979,11 +979,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#0F172A",
+    color: C.ink,
   },
   sectionSubtitle: {
     fontSize: 12,
-    color: "#64748B",
+    color: C.muted,
     marginTop: 1,
   },
   field: {
@@ -991,16 +991,16 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 12,
-    color: "#475569",
+    color: C.muted,
     marginBottom: 6,
     fontWeight: "600",
   },
   input: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: C.card,
     fontSize: 14,
   },
   segment: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: C.card,
   },
   webDateContainer: {
     marginBottom: 4,
@@ -1015,38 +1015,38 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: C.soft,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: C.line,
   },
   slotItemSelected: {
-    backgroundColor: Theme.colors.primaryAccent,
-    borderColor: Theme.colors.primaryAccent,
+    backgroundColor: C.ink,
+    borderColor: C.ink,
   },
   slotText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#334155",
+    color: C.ink,
   },
   slotTextSelected: {
-    color: "#FFFFFF",
+    color: C.card,
   },
   customTimeInput: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: C.card,
     fontSize: 13,
     marginTop: 4,
   },
   slotConfirmedBanner: {
     marginTop: 8,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: C.accentSoft,
     borderRadius: 6,
     padding: 8,
     borderWidth: 1,
-    borderColor: "#C7D2FE",
+    borderColor: C.accent,
   },
   slotConfirmedText: {
     fontSize: 12,
-    color: Theme.colors.primaryAccent,
+    color: C.accent,
   },
   submit: {
     borderRadius: 8,
@@ -1056,9 +1056,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   roundDisplay: {
-    backgroundColor: "#EEF2FF",
+    backgroundColor: C.accentSoft,
     borderWidth: 1,
-    borderColor: "#C7D2FE",
+    borderColor: C.accent,
     borderRadius: 8,
     padding: 12,
     gap: 2,
@@ -1066,20 +1066,20 @@ const styles = StyleSheet.create({
   roundDisplayText: {
     fontSize: 15,
     fontWeight: "700",
-    color: Theme.colors.primaryAccent,
+    color: C.accent,
   },
   roundDisplaySub: {
     fontSize: 12,
-    color: "#64748B",
+    color: C.muted,
   },
   modeHint: {
     fontSize: 12,
     paddingHorizontal: 0,
   },
   placedBanner: {
-    backgroundColor: "#D1FAE5",
+    backgroundColor: C.successSoft,
     borderWidth: 1,
-    borderColor: "#6EE7B7",
+    borderColor: C.success,
     borderRadius: 10,
     padding: 14,
     gap: 4,
@@ -1087,11 +1087,11 @@ const styles = StyleSheet.create({
   placedTitle: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#065F46",
+    color: C.success,
   },
   placedText: {
     fontSize: 13,
-    color: "#065F46",
+    color: C.success,
     lineHeight: 19,
   },
   markRow: {

@@ -1,40 +1,24 @@
-import { AnimatedPressable } from "@/components/AnimatedPressable";
-import { WebOnlyDecorations } from "@/components/WebOnlyDecorations";
-import { supabase } from "@/lib/supabase";
-import { Theme } from "@/theme/theme";
-import { Link, useLocalSearchParams, useRouter } from "expo-router";
-import { MotiView } from "moti";
-import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  View,
-} from "react-native";
-import { Button, Card, HelperText, Text, TextInput } from "react-native-paper";
-import { z } from "zod";
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { TextInput, Text } from 'react-native-paper';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
+import { useForm, Controller } from 'react-hook-form';
+import { z } from 'zod';
+import { supabase } from '@/lib/supabase';
+import { C } from '@/theme/design';
+import { AuthLayout } from '@/components/ui/AuthLayout';
+import { Field, authInputProps, AuthPrimaryButton, authCardStyles } from '@/components/ui/AuthField';
+import { ToastType } from '@/components/AnimatedToast';
 
 const verifySchema = z
   .object({
-    otp: z
-      .string()
-      .trim()
-      .regex(/^\d{4,10}$/, {
-        message: "Enter the 4–10 digit code from your email",
-      }),
-    newPassword: z
-      .string()
-      .min(6, { message: "Password must be at least 6 characters" }),
-    confirmPassword: z
-      .string()
-      .min(6, { message: "Password must be at least 6 characters" }),
+    otp: z.string().trim().regex(/^\d{4,10}$/, { message: 'Enter the 4–10 digit code from your email' }),
+    newPassword: z.string().min(6, { message: 'Password must be at least 6 characters' }),
+    confirmPassword: z.string().min(6, { message: 'Password must be at least 6 characters' }),
   })
   .refine((v) => v.newPassword === v.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
   });
 
 type VerifyFormData = z.infer<typeof verifySchema>;
@@ -53,45 +37,28 @@ const RESEND_SECONDS = 60;
 
 export default function VerifyOtpScreen() {
   const router = useRouter();
-  const { email, sent } = useLocalSearchParams<{
-    email: string;
-    sent?: string;
-  }>();
+  const { email, sent } = useLocalSearchParams<{ email: string; sent?: string }>();
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
   const [cooldown, setCooldown] = useState(RESEND_SECONDS);
   const [secureEntry, setSecureEntry] = useState(true);
-
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<VerifyFormData>({
-    resolver: verifyResolver,
-    defaultValues: { otp: "", newPassword: "", confirmPassword: "" },
-  });
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: ToastType }>({
+    visible: false,
+    message: '',
+    type: 'info',
+  });
 
-  const onInvalid = (formErrors: Record<string, any>) => {
-    const first = Object.values(formErrors)[0] as any;
-    const msg =
-      first?.message || "Please fix the highlighted fields and try again.";
-    console.warn(
-      "[reset] validation blocked submit:",
-      JSON.stringify(formErrors),
-    );
-    setSubmitError(msg);
-    Alert.alert("Check form", msg);
-  };
+  const { control, handleSubmit, formState: { errors } } = useForm<VerifyFormData>({
+    resolver: verifyResolver,
+    defaultValues: { otp: '', newPassword: '', confirmPassword: '' },
+  });
 
   useEffect(() => {
-    console.log(
-      "[reset] verify screen mounted, email param:",
-      JSON.stringify(email ?? null),
-    );
+    console.log('[reset] verify screen mounted, email param:', JSON.stringify(email ?? null));
     if (!email) {
-      setSubmitError("No email was provided. Go back and request a new OTP.");
+      setSubmitError('No email was provided. Go back and request a new OTP.');
     }
   }, []);
 
@@ -101,56 +68,54 @@ export default function VerifyOtpScreen() {
     return () => clearTimeout(t);
   }, [cooldown]);
 
+  const fail = (msg: string) => {
+    setSubmitError(msg);
+    setToast({ visible: true, message: msg, type: 'error' });
+  };
+
+  const onInvalid = (formErrors: Record<string, any>) => {
+    const first = Object.values(formErrors)[0] as any;
+    const msg = first?.message || 'Please fix the highlighted fields and try again.';
+    console.warn('[reset] validation blocked submit:', JSON.stringify(formErrors));
+    fail(msg);
+  };
+
   const onSubmit = async (data: VerifyFormData) => {
     if (isSubmitting) return;
     setSubmitError(null);
-    const normalizedEmail = String(email ?? "")
-      .trim()
-      .toLowerCase();
-    console.log(
-      "[reset] submit attempt for:",
-      normalizedEmail,
-      "| otp length:",
-      data.otp.trim().length,
-    );
+    const normalizedEmail = String(email ?? '').trim().toLowerCase();
+    console.log('[reset] submit attempt for:', normalizedEmail, '| otp length:', data.otp.trim().length);
     if (!normalizedEmail) {
-      const msg = "No email was provided. Go back and request a new OTP.";
-      setSubmitError(msg);
-      Alert.alert("Missing email", msg);
+      fail('No email was provided. Go back and request a new OTP.');
       return;
     }
     setIsSubmitting(true);
     setLoading(true);
     try {
+      // Step 1: verify OTP → establishes a temporary recovery session.
       const { error: verifyError } = await supabase.auth.verifyOtp({
         email: normalizedEmail,
         token: data.otp.trim(),
-        type: "recovery",
+        type: 'recovery',
       });
       if (verifyError) {
-        console.warn("[reset] verifyOtp failed:", verifyError.message);
-        setSubmitError(verifyError.message);
-        Alert.alert("OTP verification failed", verifyError.message);
+        console.warn('[reset] verifyOtp failed:', verifyError.message);
+        fail(verifyError.message);
         return;
       }
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: data.newPassword,
-      });
+      // Step 2: set the new password on the recovery session.
+      const { error: updateError } = await supabase.auth.updateUser({ password: data.newPassword });
       if (updateError) {
-        console.warn("[reset] updateUser failed:", updateError.message);
-        setSubmitError(updateError.message);
-        Alert.alert("Password update failed", updateError.message);
+        console.warn('[reset] updateUser failed:', updateError.message);
+        fail(updateError.message);
         return;
       }
       await supabase.auth.signOut().catch(() => {});
-      router.replace({
-        pathname: "/(auth)/login",
-        params: { reset: "1" },
-      } as any);
+      // Navigate immediately — alert-gated navigation is unreliable on web.
+      router.replace({ pathname: '/(auth)/login', params: { reset: '1' } } as any);
     } catch (e: any) {
-      console.warn("[reset] unexpected error:", e?.message);
-      setSubmitError(e.message || "Something went wrong.");
-      Alert.alert("Error", e.message || "Something went wrong.");
+      console.warn('[reset] unexpected error:', e?.message);
+      fail(e.message || 'Something went wrong.');
     } finally {
       setIsSubmitting(false);
       setLoading(false);
@@ -161,326 +126,138 @@ export default function VerifyOtpScreen() {
     if (!email || cooldown > 0) return;
     setResending(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        String(email ?? "")
-          .trim()
-          .toLowerCase(),
-      );
+      const { error } = await supabase.auth.resetPasswordForEmail(String(email ?? '').trim().toLowerCase());
       if (error) {
-        Alert.alert("Could not resend OTP", error.message);
+        fail(error.message);
         return;
       }
       setCooldown(RESEND_SECONDS);
-      Alert.alert("OTP resent", "A new code was sent to your email.");
+      setToast({ visible: true, message: 'A new code was sent to your email.', type: 'success' });
     } finally {
       setResending(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
+    <AuthLayout
+      title="Verify OTP"
+      subtitle={`Enter the code sent to ${email ? String(email) : 'your email'}.`}
+      toast={toast}
+      onDismissToast={() => setToast((prev) => ({ ...prev, visible: false }))}
     >
-      <WebOnlyDecorations />
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
-      >
-        <MotiView
-          from={{ opacity: 0, scale: 0.96, translateY: 16 }}
-          animate={{ opacity: 1, scale: 1, translateY: 0 }}
-          transition={{ type: "timing", duration: 300 }}
-          style={styles.cardWrapper}
-        >
-          <Card style={styles.card} mode="outlined">
-            <Card.Content style={styles.cardContent}>
-              <View style={styles.header}>
-                <Text variant="headlineMedium" style={styles.title}>
-                  Verify OTP
-                </Text>
-                {sent === "1" ? (
-                  <View style={styles.sentBanner}>
-                    <Text style={styles.sentText}>OTP sent to your email.</Text>
-                  </View>
-                ) : null}
-                <Text variant="bodyMedium" style={styles.subtitle}>
-                  Enter the code sent to {email ? String(email) : "your email"}.
-                </Text>
-              </View>
+      {sent === '1' ? (
+        <View style={styles.sentBanner}>
+          <Text style={styles.sentText}>OTP sent to your email.</Text>
+        </View>
+      ) : null}
 
-              <Controller
-                control={control}
-                name="otp"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <View style={styles.inputContainer}>
-                    <TextInput
-                      mode="outlined"
-                      label="OTP Code"
-                      left={
-                        <TextInput.Icon
-                          icon="numeric"
-                          color={Theme.colors.secondaryText}
-                        />
-                      }
-                      keyboardType="numeric"
-                      maxLength={10}
-                      autoCapitalize="none"
-                      placeholder="123456"
-                      outlineColor={Theme.colors.border}
-                      activeOutlineColor={Theme.colors.primaryAccent}
-                      outlineStyle={{ borderRadius: Theme.borderRadius.input }}
-                      onBlur={onBlur}
-                      onChangeText={(t) =>
-                        onChange(t.replace(/[^0-9]/g, "").slice(0, 10))
-                      }
-                      value={value}
-                      error={!!errors.otp}
-                      style={styles.textInput}
-                    />
-                    {errors.otp && (
-                      <HelperText
-                        type="error"
-                        visible={!!errors.otp}
-                        style={styles.errorText}
-                      >
-                        {errors.otp.message}
-                      </HelperText>
-                    )}
-                  </View>
-                )}
-              />
+      <Controller
+        control={control}
+        name="otp"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <Field label="OTP Code" error={errors.otp?.message}>
+            <TextInput
+              {...authInputProps}
+              keyboardType="numeric"
+              maxLength={10}
+              autoCapitalize="none"
+              placeholder="12345678"
+              left={<TextInput.Icon icon="shield-key-outline" color={C.faint} />}
+              onBlur={onBlur}
+              onChangeText={(t) => onChange(t.replace(/[^0-9]/g, '').slice(0, 10))}
+              value={value}
+              error={!!errors.otp}
+              style={[authCardStyles.input, styles.otpInput]}
+            />
+          </Field>
+        )}
+      />
 
-              <Controller
-                control={control}
-                name="newPassword"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <View style={styles.inputContainer}>
-                    <TextInput
-                      mode="outlined"
-                      label="New Password"
-                      left={
-                        <TextInput.Icon
-                          icon="lock-outline"
-                          color={Theme.colors.secondaryText}
-                        />
-                      }
-                      secureTextEntry={secureEntry}
-                      autoCapitalize="none"
-                      placeholder="At least 6 characters"
-                      outlineColor={Theme.colors.border}
-                      activeOutlineColor={Theme.colors.primaryAccent}
-                      outlineStyle={{ borderRadius: Theme.borderRadius.input }}
-                      right={
-                        <TextInput.Icon
-                          icon={secureEntry ? "eye" : "eye-off"}
-                          onPress={() => setSecureEntry(!secureEntry)}
-                          color={Theme.colors.secondaryText}
-                        />
-                      }
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      value={value}
-                      error={!!errors.newPassword}
-                      style={styles.textInput}
-                    />
-                    {errors.newPassword && (
-                      <HelperText
-                        type="error"
-                        visible={!!errors.newPassword}
-                        style={styles.errorText}
-                      >
-                        {errors.newPassword.message}
-                      </HelperText>
-                    )}
-                  </View>
-                )}
-              />
+      <Controller
+        control={control}
+        name="newPassword"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <Field label="New Password" error={errors.newPassword?.message}>
+            <TextInput
+              {...authInputProps}
+              secureTextEntry={secureEntry}
+              autoCapitalize="none"
+              placeholder="At least 6 characters"
+              left={<TextInput.Icon icon="lock-outline" color={C.faint} />}
+              right={
+                <TextInput.Icon
+                  icon={secureEntry ? 'eye' : 'eye-off'}
+                  onPress={() => setSecureEntry(!secureEntry)}
+                  color={C.muted}
+                />
+              }
+              onBlur={onBlur}
+              onChangeText={onChange}
+              value={value}
+              error={!!errors.newPassword}
+              style={authCardStyles.input}
+            />
+          </Field>
+        )}
+      />
 
-              <Controller
-                control={control}
-                name="confirmPassword"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <View style={styles.inputContainer}>
-                    <TextInput
-                      mode="outlined"
-                      label="Confirm Password"
-                      left={
-                        <TextInput.Icon
-                          icon="lock-check-outline"
-                          color={Theme.colors.secondaryText}
-                        />
-                      }
-                      secureTextEntry={secureEntry}
-                      autoCapitalize="none"
-                      placeholder="Repeat new password"
-                      outlineColor={Theme.colors.border}
-                      activeOutlineColor={Theme.colors.primaryAccent}
-                      outlineStyle={{ borderRadius: Theme.borderRadius.input }}
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      value={value}
-                      error={!!errors.confirmPassword}
-                      style={styles.textInput}
-                    />
-                    {errors.confirmPassword && (
-                      <HelperText
-                        type="error"
-                        visible={!!errors.confirmPassword}
-                        style={styles.errorText}
-                      >
-                        {errors.confirmPassword.message}
-                      </HelperText>
-                    )}
-                  </View>
-                )}
-              />
+      <Controller
+        control={control}
+        name="confirmPassword"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <Field label="Confirm Password" error={errors.confirmPassword?.message}>
+            <TextInput
+              {...authInputProps}
+              secureTextEntry={secureEntry}
+              autoCapitalize="none"
+              placeholder="Repeat new password"
+              left={<TextInput.Icon icon="lock-check-outline" color={C.faint} />}
+              onBlur={onBlur}
+              onChangeText={onChange}
+              value={value}
+              error={!!errors.confirmPassword}
+              style={authCardStyles.input}
+            />
+          </Field>
+        )}
+      />
 
-              {submitError ? (
-                <HelperText type="error" visible style={styles.submitError}>
-                  {submitError}
-                </HelperText>
-              ) : null}
+      {submitError ? (
+        <Text style={styles.submitError}>{submitError}</Text>
+      ) : null}
 
-              <AnimatedPressable scaleTo={0.98} style={styles.buttonWrapper}>
-                <Button
-                  mode="contained"
-                  loading={loading || isSubmitting}
-                  disabled={loading || isSubmitting}
-                  onPress={handleSubmit(onSubmit, onInvalid)}
-                  style={styles.button}
-                  contentStyle={styles.buttonContent}
-                  buttonColor={Theme.colors.primaryAccent}
-                  textColor="#FFFFFF"
-                >
-                  Reset Password
-                </Button>
-              </AnimatedPressable>
+      <AuthPrimaryButton
+        title="Reset Password"
+        loading={loading || isSubmitting}
+        disabled={loading || isSubmitting}
+        onPress={handleSubmit(onSubmit, onInvalid)}
+      />
 
-              <View style={styles.footer}>
-                {cooldown > 0 ? (
-                  <Text style={styles.cooldownText}>
-                    Resend OTP in {cooldown}s
-                  </Text>
-                ) : (
-                  <Text style={styles.footerText}>
-                    Didn't get the code?{" "}
-                    <Text style={styles.linkText} onPress={handleResend}>
-                      {resending ? "Sending…" : "Resend OTP"}
-                    </Text>
-                  </Text>
-                )}
-                <Link
-                  href="/(auth)/login"
-                  style={[styles.linkText, styles.backLink]}
-                >
-                  Back to Login
-                </Link>
-              </View>
-            </Card.Content>
-          </Card>
-        </MotiView>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <View style={styles.footer}>
+        {cooldown > 0 ? (
+          <Text style={styles.muted}>Resend OTP in {cooldown}s</Text>
+        ) : (
+          <Text style={styles.muted}>
+            Didn't get the code?{' '}
+            <Text style={styles.link} onPress={handleResend}>
+              {resending ? 'Sending…' : 'Resend OTP'}
+            </Text>
+          </Text>
+        )}
+        <Link href="/(auth)/login" style={styles.link}>
+          Back to Login
+        </Link>
+      </View>
+    </AuthLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Theme.colors.background,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justify: "center",
-    padding: Theme.spacing.lg,
-  },
-  cardWrapper: {
-    width: "100%",
-    maxWidth: 420,
-    alignSelf: "center",
-  },
-  card: {
-    backgroundColor: Theme.colors.surface,
-    borderRadius: Theme.borderRadius.card,
-    borderWidth: 1,
-    borderColor: Theme.colors.border,
-  },
-  cardContent: {
-    padding: Theme.spacing.xl,
-  },
-  header: {
-    marginBottom: Theme.spacing.lg,
-    alignItems: "center",
-  },
-  sentBanner: {
-    backgroundColor: "#D1FAE5",
-    borderRadius: Theme.borderRadius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  sentText: {
-    color: Theme.colors.success,
-    fontWeight: "600",
-    fontSize: 13,
-  },
-  title: {
-    fontWeight: "700",
-    color: Theme.colors.primaryText,
-    marginBottom: Theme.spacing.xs,
-    textAlign: "center",
-  },
-  subtitle: {
-    color: Theme.colors.secondaryText,
-    textAlign: "center",
-    marginTop: 4,
-  },
-  inputContainer: {
-    marginBottom: Theme.spacing.sm,
-  },
-  textInput: {
-    backgroundColor: Theme.colors.surface,
-    fontSize: 14,
-  },
-  errorText: {
-    paddingHorizontal: 0,
-    marginTop: 2,
-  },
-  submitError: {
-    paddingHorizontal: 0,
-    marginTop: 2,
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  buttonWrapper: {
-    marginTop: Theme.spacing.md,
-  },
-  button: {
-    borderRadius: Theme.borderRadius.button,
-  },
-  buttonContent: {
-    paddingVertical: 6,
-  },
-  footer: {
-    marginTop: Theme.spacing.lg,
-    alignItems: "center",
-    gap: 10,
-  },
-  footerText: {
-    ...Theme.typography.body,
-    color: Theme.colors.secondaryText,
-  },
-  cooldownText: {
-    ...Theme.typography.body,
-    color: Theme.colors.secondaryText,
-  },
-  linkText: {
-    color: Theme.colors.primaryAccent,
-    fontWeight: "600",
-  },
-  backLink: {
-    marginTop: 2,
-  },
+  sentBanner: { backgroundColor: C.successSoft, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12 },
+  sentText: { color: C.success, fontWeight: '700', fontSize: 13, textAlign: 'center' },
+  otpInput: { letterSpacing: 6, fontSize: 22, fontWeight: '800', textAlign: 'center' },
+  submitError: { color: C.danger, fontSize: 13, textAlign: 'center', marginBottom: 8 },
+  footer: { marginTop: 20, alignItems: 'center', gap: 8 },
+  muted: { fontSize: 14, color: C.muted },
+  link: { color: C.accent, fontWeight: '700', fontSize: 14 },
 });

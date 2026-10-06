@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, FlatList, Alert } from 'react-native';
-import { Card, Text, TextInput, ActivityIndicator, Divider } from 'react-native-paper';
+import { StyleSheet, View, ScrollView, Alert } from 'react-native';
+import { Text, TextInput, ActivityIndicator } from 'react-native-paper';
+import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
-import { Theme } from '@/theme/theme';
+import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
+import { DataTable } from '@/components/ui/DataTable';
+import { StatusChip, EmptyState } from '@/components/ui/kit';
 
 interface Student {
   id: string;
@@ -75,7 +78,7 @@ export default function StudentsScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={Theme.colors.primary} />
+        <ActivityIndicator size="large" color={C.accent} />
         <Text style={styles.loadingText}>Fetching student directory...</Text>
       </View>
     );
@@ -84,91 +87,67 @@ export default function StudentsScreen() {
   return (
     <View style={styles.container}>
       <TopNavbar title="Students" subtitle="Directory & placement" />
+      <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
+        <Text style={styles.eyebrow}>Chapter 03 · Talent</Text>
+        <Text style={styles.heading}>Students</Text>
+        <Text style={styles.count}>{filteredStudents.length} in directory</Text>
+      </MotiView>
       <View style={styles.searchBarContainer}>
         <TextInput
-          placeholder="Search by Student Name"
+          placeholder="Search by name or branch"
           mode="outlined"
           value={searchQuery}
           onChangeText={setSearchQuery}
-          left={<TextInput.Icon icon="magnify" color={Theme.colors.textSecondary} />}
+          left={<TextInput.Icon icon="magnify" color={C.faint} />}
           style={styles.searchBar}
-          outlineColor={Theme.colors.border}
-          activeOutlineColor={Theme.colors.primary}
-          outlineStyle={{ borderRadius: Theme.borderRadius.input }}
+          outlineColor={C.line}
+          activeOutlineColor={C.accent}
+          outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
         />
       </View>
 
-      <FlatList
-        data={filteredStudents}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
-        renderItem={({ item }) => (
-          <Card style={styles.card} elevation={1}>
-            <Card.Content style={styles.cardContent}>
-              <View style={styles.studentHeader}>
-                <Text style={styles.studentName}>
-                  {item.full_name || 'Incomplete Profile'}
-                </Text>
-                <View style={styles.headerBadges}>
-                  <Text style={styles.branchText}>
-                    {item.branch || 'Branch N/A'}
-                  </Text>
-                  <View style={[styles.placedPill, { backgroundColor: placedIds.has(item.id) ? '#D1FAE5' : '#F3F4F6' }]}>
-                    <Text style={[styles.placedText, { color: placedIds.has(item.id) ? Theme.colors.success : Theme.colors.secondaryText }]}>
-                      {placedIds.has(item.id) ? 'PLACED' : 'UNPLACED'}
-                    </Text>
-                  </View>
+      <ScrollView contentContainerStyle={styles.listContainer}>
+        <DataTable
+          columns={[
+            {
+              key: 'student',
+              title: 'Student',
+              flex: 2,
+              render: (item) => (
+                <View>
+                  <Text style={styles.studentName} numberOfLines={1}>{item.full_name || 'Incomplete Profile'}</Text>
+                  <Text style={styles.emailText} numberOfLines={1}>{item.users?.email || 'No email'}</Text>
                 </View>
-              </View>
-
-              <Divider style={styles.divider} />
-
-              <View style={styles.detailsRow}>
-                <View style={styles.detailCol}>
-                  <Text style={styles.label}>CGPA</Text>
-                  <Text style={styles.boldValue}>{item.cgpa ?? 'N/A'}</Text>
-                </View>
-                <View style={styles.detailCol}>
-                  <Text style={styles.label}>Backlogs</Text>
-                  <Text style={styles.boldValue}>{item.backlog_count ?? 0}</Text>
-                </View>
-                <View style={styles.detailCol}>
-                  <Text style={styles.label}>Phone</Text>
-                  <Text style={styles.boldValue}>{item.phone || 'N/A'}</Text>
-                </View>
-              </View>
-
-              <View style={styles.contactSection}>
-                <Text style={styles.emailText}>
-                  {item.users?.email || 'No email associated'}
-                </Text>
-              </View>
-
-              {item.skills && item.skills.length > 0 && (
-                <View style={styles.skillsSection}>
-                  <Text style={styles.skillsLabel}>Skills:</Text>
-                  <View style={styles.skillsList}>
-                    {item.skills.map((skill, index) => (
-                      <View key={index} style={styles.skillBadge}>
-                        <Text style={styles.skillBadgeText}>
-                          {skill}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
-            </Card.Content>
-          </Card>
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              No students found.
-            </Text>
-          </View>
-        }
-      />
+              ),
+            },
+            {
+              key: 'branch',
+              title: 'Branch',
+              flex: 1,
+              render: (item) => <Text style={styles.branchText}>{item.branch || 'N/A'}</Text>,
+            },
+            {
+              key: 'cgpa',
+              title: 'CGPA',
+              flex: 1,
+              render: (item) => <Text style={styles.boldValue}>{item.cgpa ?? 'N/A'}</Text>,
+            },
+            {
+              key: 'status',
+              title: 'Status',
+              flex: 1,
+              render: (item) => (
+                <StatusChip label={placedIds.has(item.id) ? 'Placed' : 'Unplaced'} tone={placedIds.has(item.id) ? 'success' : 'muted'} />
+              ),
+            },
+          ]}
+          rows={filteredStudents}
+          keyOf={(item) => item.id}
+        />
+        {filteredStudents.length === 0 ? (
+          <EmptyState icon="account-search-outline" title="No students found" hint="Try a different search." />
+        ) : null}
+      </ScrollView>
     </View>
   );
 }
@@ -176,135 +155,53 @@ export default function StudentsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: C.paper,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: Theme.spacing.lg,
-    backgroundColor: Theme.colors.background,
+    padding: 16,
+    backgroundColor: C.paper,
   },
   loadingText: {
-    marginTop: Theme.spacing.md,
-    color: Theme.colors.textSecondary,
-    fontSize: Theme.typography.sizes.body,
+    marginTop: 12,
+    color: C.muted,
+    fontSize: 14,
   },
+  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent, paddingHorizontal: 16, paddingTop: 16 },
+  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, paddingHorizontal: 16, marginTop: 4 },
+  count: { fontSize: 13, color: C.muted, paddingHorizontal: 16, marginTop: 4 },
   searchBarContainer: {
-    padding: Theme.spacing.lg,
-    backgroundColor: Theme.colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: Theme.colors.border,
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
   searchBar: {
-    backgroundColor: Theme.colors.background,
-    fontSize: Theme.typography.sizes.body,
+    backgroundColor: C.card,
+    fontSize: 16,
   },
   listContainer: {
-    padding: Theme.spacing.lg,
-    gap: Theme.spacing.md,
-  },
-  card: {
-    backgroundColor: Theme.colors.card,
-    borderRadius: Theme.borderRadius.card,
-    borderWidth: 1,
-    borderColor: Theme.colors.border,
-  },
-  cardContent: {
-    gap: Theme.spacing.sm,
-    padding: Theme.spacing.md,
-  },
-  studentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+    gap: 12,
   },
   studentName: {
-    fontWeight: Theme.typography.weights.bold as any,
-    fontSize: Theme.typography.sizes.cardTitle,
-    color: Theme.colors.textPrimary,
-    flex: 1,
-  },
-  branchText: {
-    color: Theme.colors.primary,
-    fontWeight: Theme.typography.weights.medium as any,
-    fontSize: Theme.typography.sizes.body,
-  },
-  headerBadges: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  placedPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: Theme.borderRadius.pill,
-  },
-  placedText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  divider: {
-    marginVertical: 4,
-    backgroundColor: Theme.colors.border,
-  },
-  detailsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 4,
-  },
-  detailCol: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  label: {
-    color: Theme.colors.textSecondary,
-    fontSize: Theme.typography.sizes.caption,
-    marginBottom: 2,
-  },
-  boldValue: {
-    fontWeight: Theme.typography.weights.bold as any,
-    color: Theme.colors.textPrimary,
-    fontSize: Theme.typography.sizes.body,
-  },
-  contactSection: {
-    paddingVertical: 2,
+    fontWeight: '800',
+    fontSize: 15,
+    color: C.ink,
   },
   emailText: {
-    color: Theme.colors.textSecondary,
-    fontSize: Theme.typography.sizes.caption,
+    color: C.muted,
+    fontSize: 12,
   },
-  skillsSection: {
-    marginTop: 4,
-    gap: 4,
+  branchText: {
+    color: C.accent,
+    fontWeight: '700',
+    fontSize: 14,
   },
-  skillsLabel: {
-    color: Theme.colors.textSecondary,
-    fontSize: Theme.typography.sizes.caption,
-  },
-  skillsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  skillBadge: {
-    backgroundColor: Theme.colors.borderLight,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: Theme.borderRadius.pill,
-  },
-  skillBadgeText: {
-    fontSize: Theme.typography.sizes.caption,
-    color: Theme.colors.textPrimary,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    padding: Theme.spacing.xl,
-    marginTop: 60,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: Theme.colors.textSecondary,
-    fontSize: Theme.typography.sizes.body,
+  boldValue: {
+    fontWeight: '800',
+    color: C.ink,
+    fontSize: 15,
   },
 });

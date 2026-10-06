@@ -5,7 +5,7 @@ import { useAuthStore } from "@/store/authStore";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import { MotiView } from "moti";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   Image,
@@ -134,6 +134,7 @@ export default function LoginScreen() {
 
   const [loading, setLoading] = useState(false);
   const [secureTextEntry, setSecureTextEntry] = useState(true);
+  const submittingRef = useRef(false);
   const [toast, setToast] = useState<{
     visible: boolean;
     message: string;
@@ -174,11 +175,14 @@ export default function LoginScreen() {
   }, []);
 
   const onSubmit = async (data: LoginFormData) => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
+      const email = data.email.trim().toLowerCase();
       const { data: authData, error: authError } =
         await supabase.auth.signInWithPassword({
-          email: data.email,
+          email,
           password: data.password,
         });
 
@@ -207,41 +211,6 @@ export default function LoginScreen() {
         }
 
         let userRole = dbUser?.role as string | null | undefined;
-
-        // Self-repair: signup with email confirmation may not have written rows yet.
-        if (!userRole) {
-          const metaRole = (authData.user.user_metadata as any)?.role;
-          console.log("[login] no users row; metadata role:", metaRole);
-          if (metaRole === "student" || metaRole === "company") {
-            const { error: repairUserError } = await supabase
-              .from("users")
-              .upsert({
-                id: loginId,
-                email: authData.user.email ?? data.email.trim(),
-                role: metaRole,
-              });
-            if (!repairUserError) {
-              if (metaRole === "student") {
-                await supabase.from("students").upsert({ id: loginId });
-              } else {
-                await supabase
-                  .from("companies")
-                  .upsert({
-                    id: loginId,
-                    approved: false,
-                    company_name: (authData.user.email ?? data.email).split(
-                      "@",
-                    )[0],
-                  });
-              }
-              userRole = metaRole;
-              console.log("[login] repaired missing users row as", metaRole);
-            } else {
-              console.warn("[login] repair failed:", repairUserError.message);
-            }
-          }
-        }
-
         console.log(
           "[login] fetched role value:",
           userRole,
@@ -249,6 +218,9 @@ export default function LoginScreen() {
           loginId,
         );
 
+        // Rows are created by the handle_new_user DB trigger at signup.
+        // If still missing, the trigger isn't installed — no client write
+        // can fix that (RLS), so fail visibly instead of guessing a role.
         if (
           userRole !== "student" &&
           userRole !== "company" &&
@@ -260,6 +232,7 @@ export default function LoginScreen() {
             "error",
           );
           setLoading(false);
+          submittingRef.current = false;
           return;
         }
 
@@ -279,6 +252,7 @@ export default function LoginScreen() {
     } catch (e: any) {
       showToast(e.message || "An unexpected error occurred.", "error");
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };

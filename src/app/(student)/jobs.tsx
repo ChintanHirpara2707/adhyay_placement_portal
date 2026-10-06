@@ -1,16 +1,18 @@
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, View, FlatList, Alert, RefreshControl, Platform } from 'react-native';
-import { Card, Text, Button, Banner, Searchbar } from 'react-native-paper';
+import { Text, Button, Banner, Searchbar } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useFeedStore } from '@/store/feedStore';
-import { Theme } from '@/theme/theme';
+import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
 import { JobCardSkeleton } from '@/components/SkeletonLoader';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { WebOnlyDecorations } from '@/components/WebOnlyDecorations';
+import { StatusChip } from '@/components/ui/kit';
+import { EmptyState } from '@/components/ui/kit';
 import { formatCTC, formatDeadline, isDeadlineUrgent } from '@/lib/format';
 
 interface JobPosting {
@@ -131,6 +133,10 @@ export default function StudentJobsScreen() {
       >
         Your profile is incomplete. Add CGPA and branch to see matching jobs.
       </Banner>
+      <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
+        <Text style={styles.eyebrow}>Open Drives</Text>
+        <Text style={styles.heading}>Find your chapter</Text>
+      </MotiView>
       <View style={styles.searchWrap}>
         <Searchbar
           placeholder="Search title or company"
@@ -155,45 +161,37 @@ export default function StudentJobsScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={Theme.colors.primaryAccent} colors={[Theme.colors.primaryAccent]} />
+            <RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={C.accent} colors={[C.accent]} />
           }
-          renderItem={({ item, index }) => {
+          renderItem={({ item }) => {
             const urgent = isDeadlineUrgent(item.deadline);
             return (
-              <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: Math.min(index * 60, 300) }}>
-                <AnimatedPressable onPress={() => navigateToJobDetail(item.id)} scaleTo={0.98}>
-                  <Card style={styles.card} elevation={1}>
-                    <Card.Content style={styles.cardContent}>
-                      <View style={styles.titleRow}>
-                        <Text style={styles.jobTitle}>{item.title}</Text>
-                        {item.isApplied ? (
-                          <View style={styles.appliedBadge}>
-                            <Text style={styles.appliedBadgeText}>Applied</Text>
-                          </View>
-                        ) : null}
-                      </View>
-                      <Text style={styles.companyName}>🏢 {(item.companies as any)?.company_name ?? 'Unknown Company'}</Text>
-                      <View style={styles.infoRow}>
-                        <View style={styles.infoTag}>
-                          <Text style={styles.infoTagText}>{formatCTC(item.ctc)}</Text>
-                        </View>
-                        <View style={[styles.infoTag, urgent && styles.urgentTag]}>
-                          <Text style={[styles.infoTagText, urgent && styles.urgentText]}>Deadline: {formatDeadline(item.deadline)}</Text>
-                        </View>
-                      </View>
-                    </Card.Content>
-                  </Card>
-                </AnimatedPressable>
-              </MotiView>
+              <AnimatedPressable onPress={() => navigateToJobDetail(item.id)} scaleTo={0.98}>
+                <View style={styles.card}>
+                  <View style={styles.titleRow}>
+                    <Text style={styles.jobTitle} numberOfLines={2}>{item.title}</Text>
+                    {item.isApplied ? <StatusChip label="Applied" tone="muted" /> : null}
+                  </View>
+                  <Text style={styles.companyName} numberOfLines={1}>{(item.companies as any)?.company_name ?? 'Unknown Company'}</Text>
+                  <View style={styles.infoRow}>
+                    <StatusChip label={formatCTC(item.ctc)} tone="accent" />
+                    <StatusChip label={`Deadline: ${formatDeadline(item.deadline)}`} tone={urgent ? 'warning' : 'muted'} />
+                  </View>
+                </View>
+              </AnimatedPressable>
             );
           }}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No jobs currently match your eligibility criteria.</Text>
-              <Button mode="outlined" onPress={() => loadData()} style={styles.retryButton} textColor={Theme.colors.primaryAccent}>
-                Refresh Opportunities
-              </Button>
-            </View>
+            <EmptyState
+              icon="briefcase-search-outline"
+              title="No matching drives"
+              hint="No jobs currently match your eligibility criteria."
+              action={
+                <Button mode="outlined" onPress={() => loadData()} style={styles.retryButton} textColor={C.accent}>
+                  Refresh Opportunities
+                </Button>
+              }
+            />
           }
         />
       )}
@@ -202,29 +200,23 @@ export default function StudentJobsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Theme.colors.background },
-  searchWrap: { paddingHorizontal: Theme.spacing.md, paddingTop: Theme.spacing.sm },
-  search: { backgroundColor: Theme.colors.surface, borderWidth: 1, borderColor: Theme.colors.border, borderRadius: Theme.borderRadius.md, elevation: 0 },
-  searchInput: { fontSize: 14 },
-  resultCount: { textAlign: 'center', fontSize: 12, color: Theme.colors.secondaryText, marginVertical: 8 },
+  container: { flex: 1, backgroundColor: C.paper },
+  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent, paddingHorizontal: 16, paddingTop: 16 },
+  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, paddingHorizontal: 16, marginTop: 4 },
+  searchWrap: { paddingHorizontal: 16, paddingTop: 12 },
+  search: { backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 14, elevation: 0 },
+  searchInput: { fontSize: 16 },
+  resultCount: { textAlign: 'center', fontSize: 12, color: C.muted, marginVertical: 8 },
   listContainer: {
-    padding: Theme.spacing.md,
-    gap: Theme.spacing.sm,
-    ...(Platform.OS === 'web' ? ({ maxWidth: 600, alignSelf: 'center', width: '100%' } as any) : null),
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+    gap: 12,
+    ...(Platform.OS === 'web' ? ({ maxWidth: 720, alignSelf: 'center', width: '100%' } as any) : null),
   },
-  card: { backgroundColor: Theme.colors.surface, borderRadius: Theme.borderRadius.lg, borderWidth: 1, borderColor: Theme.colors.border, marginBottom: Theme.spacing.sm },
-  cardContent: { padding: Theme.spacing.md },
-  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  jobTitle: { fontSize: 17, fontWeight: '700', color: Theme.colors.primaryText, flex: 1 },
-  appliedBadge: { backgroundColor: '#E5E7EB', borderRadius: Theme.borderRadius.pill, paddingHorizontal: 8, paddingVertical: 3 },
-  appliedBadgeText: { fontSize: 10, fontWeight: '700', color: '#6B7280' },
-  companyName: { fontSize: 14, color: Theme.colors.secondaryText, marginVertical: 4 },
-  infoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Theme.spacing.sm, marginTop: Theme.spacing.xs },
-  infoTag: { backgroundColor: Theme.colors.background, borderWidth: 1, borderColor: Theme.colors.border, paddingHorizontal: 8, paddingVertical: 4, borderRadius: Theme.borderRadius.sm },
-  infoTagText: { fontSize: 12, fontWeight: '500', color: Theme.colors.secondaryText },
-  urgentTag: { borderColor: Theme.colors.warning, backgroundColor: '#FFFBEB' },
-  urgentText: { color: Theme.colors.warning, fontWeight: '700' },
-  emptyContainer: { alignItems: 'center', padding: Theme.spacing.xl, marginTop: 40 },
-  emptyText: { fontSize: 15, color: Theme.colors.secondaryText, textAlign: 'center', marginBottom: Theme.spacing.lg },
-  retryButton: { borderRadius: Theme.borderRadius.md, borderColor: Theme.colors.border },
+  card: { backgroundColor: C.card, borderRadius: 22, borderWidth: 1, borderColor: C.line, padding: 18, gap: 8 },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
+  jobTitle: { fontSize: 17, fontWeight: '800', color: C.ink, flex: 1, minWidth: 0, flexShrink: 1, letterSpacing: -0.3 },
+  companyName: { fontSize: 14, color: C.muted },
+  infoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 },
+  retryButton: { borderRadius: 14, borderColor: C.line, marginTop: 12 },
 });

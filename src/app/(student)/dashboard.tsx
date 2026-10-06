@@ -1,13 +1,15 @@
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, View, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
-import { Card, Text, ProgressBar } from 'react-native-paper';
+import { Text, ProgressBar } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { Theme } from '@/theme/theme';
+import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
-import { StatCard } from '@/components/StatCard';
+import { Screen } from '@/components/ui/Screen';
+import { Card, SectionHeader, StatCard, StatusChip, EmptyState } from '@/components/ui/kit';
+import { ResponsiveGrid } from '@/components/ui/kit';
 import { ActivityFeedItem } from '@/components/ActivityFeedItem';
 import { formatCTC, formatDeadline } from '@/lib/format';
 
@@ -135,111 +137,110 @@ export default function StudentDashboard() {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={styles.shell}>
       <TopNavbar title="Dashboard" subtitle="Student Overview" />
-      <ScrollView
-        contentContainerStyle={styles.body}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadAll(true)} tintColor={Theme.colors.primaryAccent} />}
+      <Screen
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadAll(true)} tintColor={C.accent} />}
       >
-        <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 280 }}>
+        <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 500 }}>
+          <Text style={styles.eyebrow}>Student Workspace</Text>
           <Text style={styles.greeting}>Welcome back{fullName ? `, ${fullName.split(' ')[0]}` : ''}</Text>
           <Text style={styles.sub}>Here is your placement snapshot.</Text>
         </MotiView>
 
-        {completion < 100 ? (
-          <TouchableOpacity activeOpacity={0.8} onPress={() => router.push('/(student)/profile' as any)}>
-            <Card style={styles.completeCard} elevation={1}>
-              <Card.Content style={styles.completeContent}>
-                <View style={styles.completeRow}>
-                  <Text style={styles.completeTitle}>Profile {completion}% complete</Text>
-                  <Text style={styles.completeLink}>Complete now</Text>
-                </View>
-                <ProgressBar progress={completion / 100} color={Theme.colors.primaryAccent} style={styles.bar} />
-                <Text style={styles.completeHint}>Add CGPA, branch, skills and resume to unlock jobs.</Text>
-              </Card.Content>
+        <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 500, delay: 100 }}>
+          <View style={styles.hero}>
+            <View style={styles.glow} />
+            <Text style={styles.heroEyebrow}>Next Chapter</Text>
+            {completion < 100 ? (
+              <TouchableOpacity activeOpacity={0.85} onPress={() => router.push('/(student)/profile' as any)}>
+                <Text style={styles.heroTitle}>Profile {completion}% complete</Text>
+                <ProgressBar progress={completion / 100} color={C.amber} style={styles.bar} />
+                <Text style={styles.heroHint}>Add CGPA, branch, skills and resume to unlock jobs. Tap to complete now →</Text>
+              </TouchableOpacity>
+            ) : (
+              <>
+                <Text style={styles.heroTitle}>{recommended.length} drives match you</Text>
+                <Text style={styles.heroHint}>Your profile is complete. Keep applying before deadlines.</Text>
+              </>
+            )}
+          </View>
+        </MotiView>
+
+        <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 500, delay: 180 }}>
+          <ResponsiveGrid>
+            <StatCard index="01" label="Applications" value={appCount} icon="file-document-outline" tone="accent" />
+            <StatCard index="02" label="Interviews" value={interviewCount} icon="calendar-clock" tone="warning" sub="upcoming" />
+            <StatCard index="03" label="Selected" value={selectedCount} icon="check-decagram" tone="success" sub="offers" />
+          </ResponsiveGrid>
+        </MotiView>
+
+        <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 500, delay: 260 }}>
+          <SectionHeader
+            eyebrow="Recommended"
+            title="Jobs for you"
+            action={
+              <TouchableOpacity onPress={() => router.push('/(student)/jobs' as any)}>
+                <Text style={styles.seeAll}>See All</Text>
+              </TouchableOpacity>
+            }
+          />
+          {recommended.length === 0 ? (
+            <Card>
+              <EmptyState icon="briefcase-outline" title="No recommendations yet" hint="Complete your profile to get recommendations." />
             </Card>
-          </TouchableOpacity>
-        ) : null}
-
-        <View style={styles.statsRow}>
-          <StatCard label="Applications" value={appCount} icon="file-document-outline" delay={40} />
-          <StatCard label="Interviews" value={interviewCount} icon="calendar-clock" accent={Theme.colors.warning} sub="upcoming" delay={90} />
-          <StatCard label="Selected" value={selectedCount} icon="check-decagram" accent={Theme.colors.success} sub="offers" delay={140} />
-        </View>
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recommended Jobs</Text>
-          <TouchableOpacity onPress={() => router.push('/(student)/jobs' as any)}>
-            <Text style={styles.seeAll}>See All</Text>
-          </TouchableOpacity>
-        </View>
-        {recommended.length === 0 ? (
-          <Card style={styles.emptyCard} elevation={0}>
-            <Card.Content>
-              <Text style={styles.emptyText}>Complete your profile to get recommendations.</Text>
-            </Card.Content>
-          </Card>
-        ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
-            {recommended.map((j) => (
-              <TouchableOpacity
-                key={j.id}
-                activeOpacity={0.85}
-                onPress={() => router.push({ pathname: '/(student)/job/[id]' as any, params: { id: j.id } })}
-              >
-                <Card style={styles.recCard} elevation={1}>
-                  <Card.Content style={styles.recContent}>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
+              {recommended.map((j) => (
+                <TouchableOpacity
+                  key={j.id}
+                  activeOpacity={0.85}
+                  onPress={() => router.push({ pathname: '/(student)/job/[id]' as any, params: { id: j.id } })}
+                >
+                  <Card style={styles.recCard}>
                     <Text style={styles.recTitle} numberOfLines={2}>{j.title}</Text>
                     <Text style={styles.recCompany} numberOfLines={1}>{(j.companies as any)?.company_name ?? 'Company'}</Text>
-                    <Text style={styles.recMeta}>{formatCTC(j.ctc)} · {formatDeadline(j.deadline)}</Text>
-                  </Card.Content>
-                </Card>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
+                    <StatusChip label={formatCTC(j.ctc)} tone="accent" />
+                    <Text style={styles.recMeta}>{formatDeadline(j.deadline)}</Text>
+                  </Card>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+        </MotiView>
 
-        <Text style={styles.sectionTitle}>Recent Activity</Text>
-        <Card style={styles.feedCard} elevation={1}>
-          <Card.Content style={styles.feedContent}>
+        <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 500, delay: 340 }}>
+          <SectionHeader eyebrow="Feed" title="Recent Activity" />
+          <Card>
             {activity.length === 0 ? (
-              <Text style={styles.emptyText}>No updates yet. New shortlists and interviews will appear here.</Text>
+              <EmptyState icon="bell-outline" title="No updates yet" hint="New shortlists and interviews will appear here." />
             ) : (
               activity.map((n) => (
                 <ActivityFeedItem key={n.id} icon="bell-outline" message={n.message} timestamp={n.created_at} unread={!n.read} />
               ))
             )}
-          </Card.Content>
-        </Card>
-      </ScrollView>
+          </Card>
+        </MotiView>
+      </Screen>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Theme.colors.background },
-  body: { padding: Theme.spacing.md, gap: Theme.spacing.md, paddingBottom: 24 },
-  greeting: { fontSize: 22, fontWeight: '700', color: Theme.colors.primaryText },
-  sub: { fontSize: 13, color: Theme.colors.secondaryText, marginTop: 2 },
-  completeCard: { backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#DBEAFE', borderRadius: Theme.borderRadius.lg },
-  completeContent: { gap: 8 },
-  completeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  completeTitle: { fontWeight: '700', color: Theme.colors.primaryText },
-  completeLink: { color: Theme.colors.primaryAccent, fontWeight: '600', fontSize: 13 },
-  bar: { height: 8, borderRadius: 4, backgroundColor: '#DBEAFE' },
-  completeHint: { fontSize: 12, color: Theme.colors.secondaryText },
-  statsRow: { flexDirection: 'row', gap: Theme.spacing.sm },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: Theme.colors.primaryText, marginTop: 4 },
-  seeAll: { color: Theme.colors.primaryAccent, fontWeight: '600', fontSize: 13 },
-  hScroll: { gap: 10, paddingVertical: 4 },
-  recCard: { width: 230, backgroundColor: Theme.colors.surface, borderWidth: 1, borderColor: Theme.colors.border, borderRadius: Theme.borderRadius.lg },
-  recContent: { gap: 4 },
-  recTitle: { fontWeight: '700', color: Theme.colors.primaryText, fontSize: 15 },
-  recCompany: { fontSize: 13, color: Theme.colors.secondaryText },
-  recMeta: { fontSize: 12, color: Theme.colors.secondaryText, fontWeight: '500' },
-  feedCard: { backgroundColor: Theme.colors.surface, borderWidth: 1, borderColor: Theme.colors.border, borderRadius: Theme.borderRadius.lg },
-  feedContent: { paddingVertical: 6 },
-  emptyCard: { backgroundColor: Theme.colors.surface, borderWidth: 1, borderColor: Theme.colors.border, borderRadius: Theme.borderRadius.lg },
-  emptyText: { fontSize: 13, color: Theme.colors.secondaryText, textAlign: 'center', paddingVertical: 8 },
+  shell: { flex: 1, backgroundColor: C.paper },
+  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent },
+  greeting: { fontSize: 30, fontWeight: '800', color: C.ink, letterSpacing: -1.2, marginTop: 4 },
+  sub: { fontSize: 15, color: C.muted, marginTop: 4, lineHeight: 22 },
+  hero: { backgroundColor: C.ink, borderRadius: 24, padding: 22, gap: 8, overflow: 'hidden' },
+  glow: { position: 'absolute', width: 240, height: 240, borderRadius: 120, backgroundColor: C.accent, opacity: 0.25, top: -90, right: -70 },
+  heroEyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.amber },
+  heroTitle: { fontSize: 22, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.6 },
+  heroHint: { fontSize: 14, color: '#C9D1E3', lineHeight: 21 },
+  bar: { height: 8, borderRadius: 4, backgroundColor: C.inkSoft, marginTop: 8 },
+  seeAll: { color: C.accent, fontWeight: '700', fontSize: 14 },
+  hScroll: { gap: 12, paddingVertical: 4 },
+  recCard: { width: 240, gap: 6 },
+  recTitle: { fontWeight: '800', color: C.ink, fontSize: 16, letterSpacing: -0.3 },
+  recCompany: { fontSize: 13, color: C.muted },
+  recMeta: { fontSize: 12, color: C.muted, fontWeight: '600' },
 });

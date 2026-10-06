@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, FlatList, Alert } from 'react-native';
-import { Card, Text, Button, ActivityIndicator, Divider } from 'react-native-paper';
+import { Text, Button, ActivityIndicator } from 'react-native-paper';
+import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
-import { Theme } from '@/theme/theme';
+import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
+import { EmptyState } from '@/components/ui/kit';
 
 interface PendingCompany {
   id: string;
@@ -93,7 +95,7 @@ export default function ApprovalsScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={Theme.colors.primary} />
+        <ActivityIndicator size="large" color={C.accent} />
         <Text style={styles.loadingText}>Fetching pending approvals...</Text>
       </View>
     );
@@ -102,65 +104,66 @@ export default function ApprovalsScreen() {
   return (
     <View style={styles.container}>
       <TopNavbar title="Approvals" subtitle="Pending companies" />
+      <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
+        <Text style={styles.eyebrow}>Chapter 01 · Review</Text>
+        <Text style={styles.heading}>Company approvals</Text>
+        <Text style={styles.count}>{companies.length} awaiting decision</Text>
+      </MotiView>
       <FlatList
         data={companies}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
         renderItem={({ item }) => (
-          <Card style={styles.card} elevation={1}>
-            <Card.Content style={styles.cardContent}>
-              <View style={styles.headerInfo}>
-                <Text style={styles.companyName}>
-                  {item.company_name || 'Unnamed Company'}
+          <View style={styles.card}>
+            <View style={styles.headerInfo}>
+              <Text style={styles.companyName} numberOfLines={1}>
+                {item.company_name || 'Unnamed Company'}
+              </Text>
+              <Text style={styles.emailText} numberOfLines={1}>
+                {item.users?.email || 'No email associated'}
+              </Text>
+              {item.website ? (
+                <Text style={styles.websiteText} numberOfLines={1}>
+                  {item.website}
                 </Text>
-                <Text style={styles.emailText}>
-                  {item.users?.email || 'No email associated'}
-                </Text>
-                {item.website && (
-                  <Text style={styles.websiteText}>
-                    {item.website}
-                  </Text>
-                )}
-              </View>
+              ) : null}
+            </View>
 
-              <Divider style={styles.divider} />
+            <View style={styles.descriptionSection}>
+              <Text style={styles.descriptionText} numberOfLines={4}>
+                {item.description || 'No description provided.'}
+              </Text>
+            </View>
 
-              <View style={styles.descriptionSection}>
-                <Text style={styles.descriptionText}>
-                  {item.description || 'No description provided.'}
-                </Text>
-              </View>
-
-              <View style={styles.actionButtons}>
-                <Button
-                  mode="contained"
-                  onPress={() => handleApprove(item.id)}
-                  style={styles.actionBtn}
-                  buttonColor={Theme.colors.primary}
-                  textColor="#FFFFFF"
-                  icon="check"
-                >
-                  Approve
-                </Button>
-                <Button
-                  mode="outlined"
-                  onPress={() => handleReject(item.id)}
-                  style={styles.rejectBtn}
-                  textColor={Theme.colors.error}
-                  icon="close"
-                >
-                  Reject
-                </Button>
-              </View>
-            </Card.Content>
-          </Card>
+            <View style={styles.actionButtons}>
+              <Button
+                mode="contained"
+                onPress={() => handleApprove(item.id)}
+                style={styles.actionBtn}
+                buttonColor={C.ink}
+                textColor="#FFFFFF"
+                icon="check"
+              >
+                Approve
+              </Button>
+              <Button
+                mode="outlined"
+                onPress={() => handleReject(item.id)}
+                style={styles.rejectBtn}
+                textColor={C.danger}
+                icon="close"
+              >
+                Reject
+              </Button>
+            </View>
+          </View>
         )}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              No companies currently pending approval.
-            </Text>
-          </View>
+          <EmptyState
+            icon="checkbox-marked-circle-outline"
+            title="Queue is clear"
+            hint="No companies currently pending approval."
+          />
         }
       />
     </View>
@@ -170,85 +173,80 @@ export default function ApprovalsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: C.paper,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: Theme.spacing.lg,
-    backgroundColor: Theme.colors.background,
+    padding: 16,
+    backgroundColor: C.paper,
   },
   loadingText: {
-    marginTop: Theme.spacing.md,
-    color: Theme.colors.textSecondary,
-    fontSize: Theme.typography.sizes.body,
+    marginTop: 12,
+    color: C.muted,
+    fontSize: 14,
   },
+  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent, paddingHorizontal: 16, paddingTop: 16 },
+  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, paddingHorizontal: 16, marginTop: 4 },
+  count: { fontSize: 13, color: C.muted, paddingHorizontal: 16, marginTop: 4 },
   listContainer: {
-    padding: Theme.spacing.lg,
-    gap: Theme.spacing.md,
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+    gap: 12,
   },
   card: {
-    backgroundColor: Theme.colors.card,
-    borderRadius: Theme.borderRadius.card,
+    backgroundColor: C.card,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: Theme.colors.border,
-  },
-  cardContent: {
-    gap: Theme.spacing.sm,
-    padding: Theme.spacing.md,
+    borderColor: C.line,
+    padding: 18,
+    gap: 10,
   },
   headerInfo: {
-    gap: 4,
+    gap: 2,
   },
   companyName: {
-    fontWeight: Theme.typography.weights.bold as any,
-    fontSize: Theme.typography.sizes.cardTitle,
-    color: Theme.colors.textPrimary,
+    fontWeight: '800',
+    fontSize: 18,
+    letterSpacing: -0.4,
+    color: C.ink,
   },
   emailText: {
-    color: Theme.colors.textSecondary,
-    fontSize: Theme.typography.sizes.body,
+    color: C.muted,
+    fontSize: 14,
   },
   websiteText: {
-    color: Theme.colors.primary,
-    fontSize: Theme.typography.sizes.caption,
-  },
-  divider: {
-    marginVertical: 4,
-    backgroundColor: Theme.colors.border,
+    color: C.accent,
+    fontSize: 12,
+    fontWeight: '600',
   },
   descriptionSection: {
-    paddingVertical: 4,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: C.line,
   },
   descriptionText: {
-    color: Theme.colors.textPrimary,
-    fontSize: Theme.typography.sizes.body,
-    lineHeight: 20,
+    color: C.ink,
+    fontSize: 15,
+    lineHeight: 23,
   },
   actionButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: Theme.spacing.md,
-    marginTop: 8,
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 4,
   },
   actionBtn: {
     flex: 1,
-    borderRadius: Theme.borderRadius.button,
+    minWidth: 140,
+    borderRadius: 14,
   },
   rejectBtn: {
     flex: 1,
-    borderRadius: Theme.borderRadius.button,
-    borderColor: Theme.colors.error,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    padding: Theme.spacing.xl,
-    marginTop: 60,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: Theme.colors.textSecondary,
-    fontSize: Theme.typography.sizes.body,
+    minWidth: 140,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: C.danger,
   },
 });

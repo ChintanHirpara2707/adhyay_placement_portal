@@ -4,12 +4,14 @@ import { ActivityIndicator } from 'react-native-paper';
 import { AnimatedTabIcon } from '@/components/AnimatedTabIcon';
 import { useAuthStore } from '@/store/authStore';
 import { useRoleGuard } from '@/hooks/useRoleGuard';
-import { View } from 'react-native';
-import { Theme } from '@/theme/theme';
+import { View, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { C } from '@/theme/design';
 
 export default function AdminLayout() {
   const router = useRouter();
   const { session, role, loading } = useAuthStore();
+  const insets = useSafeAreaInsets();
   useRoleGuard('admin');
 
   useEffect(() => {
@@ -20,8 +22,8 @@ export default function AdminLayout() {
 
   if (loading || !session || role !== 'admin') {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Theme.colors.background }}>
-        <ActivityIndicator size="large" color={Theme.colors.primary} />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: C.paper }}>
+        <ActivityIndicator size="large" color={C.accent} />
       </View>
     );
   }
@@ -29,21 +31,21 @@ export default function AdminLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Theme.colors.primaryAccent,
-        tabBarInactiveTintColor: Theme.colors.secondaryText,
+        tabBarActiveTintColor: C.accent,
+        tabBarInactiveTintColor: C.faint,
         tabBarStyle: {
-          backgroundColor: Theme.colors.background,
-          borderTopColor: Theme.colors.border,
+          backgroundColor: '#FFFFFF',
+          borderTopColor: C.line,
           borderTopWidth: 1,
           elevation: 0,
           shadowOpacity: 0,
-          height: 60,
-          paddingBottom: 8,
+          height: 62 + (Platform.OS === 'web' ? 0 : insets.bottom),
+          paddingBottom: 8 + (Platform.OS === 'web' ? 0 : insets.bottom),
           paddingTop: 6,
         },
         tabBarLabelStyle: {
-          fontSize: Theme.typography.sizes.caption,
-          fontWeight: Theme.typography.weights.medium as any,
+          fontSize: 11,
+          fontWeight: '700',
         },
         headerShown: false,
       }}

@@ -1,13 +1,14 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, View, ScrollView, RefreshControl, Alert } from 'react-native';
-import { Card, Text, Button } from 'react-native-paper';
+import { StyleSheet, View, RefreshControl, Alert } from 'react-native';
+import { Text, Button } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { Theme } from '@/theme/theme';
+import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
-import { StatCard } from '@/components/StatCard';
+import { Screen } from '@/components/ui/Screen';
+import { Card, SectionHeader, StatCard, EmptyState, ResponsiveGrid } from '@/components/ui/kit';
 import { ActivityFeedItem } from '@/components/ActivityFeedItem';
 
 export default function CompanyDashboard() {
@@ -95,80 +96,84 @@ export default function CompanyDashboard() {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={styles.shell}>
       <TopNavbar title="Dashboard" subtitle={companyName || 'Recruiter overview'} />
-      <ScrollView
-        contentContainerStyle={styles.body}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadAll(true)} tintColor={Theme.colors.primaryAccent} />}
+      <Screen
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadAll(true)} tintColor={C.accent} />}
       >
         {checking ? (
           <Text style={styles.loading}>Verifying company account…</Text>
         ) : approved === false ? (
-          <MotiView from={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'timing', duration: 280 }}>
-            <Card style={styles.pending} elevation={1}>
-              <Card.Content style={styles.pendingContent}>
+          <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
+            <Card>
+              <View style={styles.pendingContent}>
+                <Text style={styles.eyebrowWarn}>Awaiting Review</Text>
                 <Text style={styles.pendingTitle}>Approval Pending</Text>
                 <Text style={styles.pendingText}>
                   Your company profile is awaiting administrator review. You can post jobs after approval.
                 </Text>
-                <Button mode="outlined" onPress={() => loadAll(true)} textColor={Theme.colors.primaryAccent} style={styles.checkBtn}>
+                <Button mode="outlined" onPress={() => loadAll(true)} textColor={C.accent} style={styles.checkBtn}>
                   Check Approval Status
                 </Button>
-              </Card.Content>
+              </View>
             </Card>
           </MotiView>
         ) : (
           <>
-            <View style={styles.statsRow}>
-              <StatCard label="Active Jobs" value={activeJobs} icon="briefcase" delay={30} />
-              <StatCard label="Applicants" value={totalApplicants} icon="account-multiple" accent={Theme.colors.warning} delay={80} />
-              <StatCard label="Shortlisted" value={shortlisted} icon="check-decagram" accent={Theme.colors.success} delay={130} />
-            </View>
+            <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
+              <Text style={styles.eyebrow}>Recruiter Workspace</Text>
+              <Text style={styles.heading}>{companyName || 'Dashboard'}</Text>
+            </MotiView>
+            <ResponsiveGrid>
+              <StatCard index="01" label="Active Jobs" value={activeJobs} icon="briefcase" tone="accent" />
+              <StatCard index="02" label="Applicants" value={totalApplicants} icon="account-multiple" tone="warning" />
+              <StatCard index="03" label="Shortlisted" value={shortlisted} icon="check-decagram" tone="success" />
+            </ResponsiveGrid>
             <Button
               mode="contained"
               icon="plus"
-              buttonColor={Theme.colors.primaryAccent}
-              textColor="#fff"
+              buttonColor={C.ink}
+              textColor="#FFFFFF"
               style={styles.postBtn}
+              contentStyle={styles.postBtnContent}
+              labelStyle={styles.postBtnLabel}
               onPress={() => router.push('/(company)/post-job' as any)}
             >
               Post New Job
             </Button>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Activity</Text>
-              <Text style={styles.link} onPress={() => router.push('/(company)/my-jobs' as any)}>My Jobs</Text>
-            </View>
-            <Card style={styles.feed} elevation={1}>
-              <Card.Content style={styles.feedContent}>
-                {recent.length === 0 ? (
-                  <Text style={styles.empty}>No applicants yet. Post a job to start receiving applications.</Text>
-                ) : (
-                  recent.map((r) => <ActivityFeedItem key={r.id} icon="account-plus-outline" message={r.message} timestamp={r.created_at} />)
-                )}
-              </Card.Content>
+            <SectionHeader
+              eyebrow="Feed"
+              title="Recent Activity"
+              action={
+                <Text style={styles.link} onPress={() => router.push('/(company)/my-jobs' as any)}>My Jobs</Text>
+              }
+            />
+            <Card>
+              {recent.length === 0 ? (
+                <EmptyState icon="account-plus-outline" title="No applicants yet" hint="Post a job to start receiving applications." />
+              ) : (
+                recent.map((r) => <ActivityFeedItem key={r.id} icon="account-plus-outline" message={r.message} timestamp={r.created_at} />)
+              )}
             </Card>
           </>
         )}
-      </ScrollView>
+      </Screen>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Theme.colors.background },
-  body: { padding: Theme.spacing.md, gap: Theme.spacing.md, paddingBottom: 24 },
-  loading: { textAlign: 'center', color: Theme.colors.secondaryText, marginTop: 40 },
-  pending: { backgroundColor: Theme.colors.surface, borderWidth: 1, borderColor: Theme.colors.border, borderRadius: Theme.borderRadius.lg },
-  pendingContent: { alignItems: 'center', padding: Theme.spacing.xl, gap: 8 },
-  pendingTitle: { fontSize: 20, fontWeight: '700', color: Theme.colors.primaryText },
-  pendingText: { fontSize: 14, color: Theme.colors.secondaryText, textAlign: 'center', lineHeight: 20 },
-  checkBtn: { borderRadius: Theme.borderRadius.md, marginTop: 8 },
-  statsRow: { flexDirection: 'row', gap: Theme.spacing.sm },
-  postBtn: { borderRadius: Theme.borderRadius.button },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: Theme.colors.primaryText },
-  link: { color: Theme.colors.primaryAccent, fontWeight: '600', fontSize: 13 },
-  feed: { backgroundColor: Theme.colors.surface, borderWidth: 1, borderColor: Theme.colors.border, borderRadius: Theme.borderRadius.lg },
-  feedContent: { paddingVertical: 6 },
-  empty: { fontSize: 13, color: Theme.colors.secondaryText, textAlign: 'center', paddingVertical: 10 },
+  shell: { flex: 1, backgroundColor: C.paper },
+  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent },
+  eyebrowWarn: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.warning },
+  heading: { fontSize: 30, fontWeight: '800', color: C.ink, letterSpacing: -1.2, marginTop: 4 },
+  loading: { textAlign: 'center', color: C.muted, marginTop: 40 },
+  pendingContent: { alignItems: 'center', gap: 8, paddingVertical: 8 },
+  pendingTitle: { fontSize: 22, fontWeight: '800', color: C.ink, letterSpacing: -0.6 },
+  pendingText: { fontSize: 15, color: C.muted, textAlign: 'center', lineHeight: 22 },
+  checkBtn: { borderRadius: 14, marginTop: 8 },
+  postBtn: { borderRadius: 14 },
+  postBtnContent: { paddingVertical: 8 },
+  postBtnLabel: { fontSize: 16, fontWeight: '700' },
+  link: { color: C.accent, fontWeight: '700', fontSize: 14 },
 });

@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Link, useRouter } from "expo-router";
 import { MotiView } from "moti";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   Image,
@@ -139,6 +139,7 @@ export default function SignupScreen() {
 
   const [loading, setLoading] = useState(false);
   const [secureTextEntry, setSecureTextEntry] = useState(true);
+  const submittingRef = useRef(false);
   const [toast, setToast] = useState<{
     visible: boolean;
     message: string;
@@ -167,11 +168,14 @@ export default function SignupScreen() {
   };
 
   const onSubmit = async (data: SignupFormData) => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
+      const email = data.email.trim().toLowerCase();
       console.log("[signup] selected role:", data.role);
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
+        email,
         password: data.password,
         options: {
           data: {
@@ -200,76 +204,28 @@ export default function SignupScreen() {
         userId,
         "| active session:",
         hasSession,
-        "| role to write:",
+        "| role:",
         data.role,
       );
 
-      // 1. Write the role to the users table FIRST (login redirect depends on this row).
-      const { error: userRowError } = await supabase
-        .from("users")
-        .upsert({ id: userId, email: data.email.trim(), role: data.role });
-
-      if (userRowError) {
-        console.warn("[signup] users upsert failed:", userRowError.message);
-        showToast(
-          hasSession
-            ? "Account created but role could not be saved: " +
-                userRowError.message
-            : "Account created. Confirm your email, then sign in — your profile will finish setting up on first login.",
-          hasSession ? "error" : "info",
-        );
-        if (!hasSession) {
-          await supabase.auth.signOut().catch(() => {});
-          setTimeout(() => router.replace("/(auth)/login"), 1200);
-          setLoading(false);
-          return;
-        }
-        setLoading(false);
-        return;
-      }
-
-      // 2. Create the role row using the SAME selected role value.
-      if (data.role === "student") {
-        const { error: studentError } = await supabase
-          .from("students")
-          .upsert({ id: userId });
-        if (studentError) {
-          console.warn("[signup] students upsert:", studentError.message);
-          showToast(
-            "Account created but student profile failed: " +
-              studentError.message,
-            "error",
-          );
-          setLoading(false);
-          return;
-        }
-      } else if (data.role === "company") {
-        const companyName = data.email.split("@")[0];
-        const { error: companyError } = await supabase
-          .from("companies")
-          .upsert({ id: userId, approved: false, company_name: companyName });
-        if (companyError) {
-          console.warn("[signup] companies upsert:", companyError.message);
-          showToast(
-            "Account created but company profile failed: " +
-              companyError.message,
-            "error",
-          );
-          setLoading(false);
-          return;
-        }
-      }
-
-      console.log("[signup] role write complete for", userId, "as", data.role);
-      // Clear any auto session so login re-fetches a fresh role.
+      // Row creation lives in the DB trigger (handle_new_user), which reads
+      // the role from auth metadata and bypasses RLS as security definer.
+      // No client-side users/students/companies writes here — they would
+      // just hit RLS denials and warn.
       await supabase.auth.signOut().catch(() => {});
-      showToast("Registration successful! Please sign in.", "success");
+      showToast(
+        hasSession
+          ? "Registration successful! Please sign in."
+          : "Account created. Confirm your email, then sign in.",
+        "success",
+      );
       setTimeout(() => {
         router.replace("/(auth)/login");
       }, 1200);
     } catch (e: any) {
       showToast(e.message || "Something went wrong.", "error");
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
@@ -558,7 +514,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: C.ink,
     padding: 56,
-    justify: "space-between",
     justifyContent: "space-between",
     overflow: "hidden",
   },

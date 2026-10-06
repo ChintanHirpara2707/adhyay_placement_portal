@@ -1,13 +1,15 @@
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, View, FlatList, Alert, RefreshControl } from 'react-native';
-import { Card, Text, SegmentedButtons } from 'react-native-paper';
+import { Text, SegmentedButtons } from 'react-native-paper';
 import { useFocusEffect } from 'expo-router';
 import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { Theme } from '@/theme/theme';
+import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
 import { JobCardSkeleton } from '@/components/SkeletonLoader';
+import { StatusChip } from '@/components/ui/kit';
+import { EmptyState } from '@/components/ui/kit';
 import { formatDateTime } from '@/lib/format';
 
 interface InterviewRow {
@@ -105,6 +107,10 @@ export default function StudentInterviewsScreen() {
   return (
     <View style={styles.container}>
       <TopNavbar title="Interviews" subtitle="Schedule & rounds" />
+      <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
+        <Text style={styles.eyebrow}>Your Stages</Text>
+        <Text style={styles.heading}>Interviews</Text>
+      </MotiView>
       <View style={styles.toggleWrap}>
         <SegmentedButtons
           value={tab}
@@ -125,35 +131,29 @@ export default function StudentInterviewsScreen() {
           data={visible}
           keyExtractor={(i) => i.id}
           contentContainerStyle={styles.list}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={Theme.colors.primaryAccent} />}
-          renderItem={({ item, index }) => (
-            <MotiView from={{ opacity: 0, translateY: 14 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 280, delay: Math.min(index * 50, 250) }}>
-              <Card style={styles.card} elevation={1}>
-                <Card.Content style={styles.cardContent}>
-                  <View style={styles.headerRow}>
-                    <Text style={styles.round}>Round {item.round_number}</Text>
-                    <View style={[styles.modePill, { backgroundColor: item.mode === 'online' ? '#E0F7FA' : '#E8F5E9' }]}>
-                      <Text style={[styles.modeText, { color: item.mode === 'online' ? Theme.colors.primaryAccent : '#2E7D32' }]}>
-                        {String(item.mode).toUpperCase()}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.progress}>
-                    Round {item.currentRound} of {item.totalRounds}
-                    {item.roundNames[item.currentRound - 1] ? `: ${item.roundNames[item.currentRound - 1]}` : ''}
-                  </Text>
-                  <Text style={styles.job}>{item.jobTitle}</Text>
-                  {item.companyName ? <Text style={styles.company}>{item.companyName}</Text> : null}
-                  <Text style={styles.date}>{formatDateTime(item.date_time)}</Text>
-                  {item.notes ? <Text style={styles.notes}>{item.notes}</Text> : null}
-                </Card.Content>
-              </Card>
-            </MotiView>
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={C.accent} />}
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <View style={styles.headerRow}>
+                <Text style={styles.round}>Round {item.round_number}</Text>
+                <StatusChip label={String(item.mode).toUpperCase()} tone={item.mode === 'online' ? 'accent' : 'success'} />
+              </View>
+              <Text style={styles.progress}>
+                Round {item.currentRound} of {item.totalRounds}
+                {item.roundNames[item.currentRound - 1] ? `: ${item.roundNames[item.currentRound - 1]}` : ''}
+              </Text>
+              <Text style={styles.job} numberOfLines={2}>{item.jobTitle}</Text>
+              {item.companyName ? <Text style={styles.company} numberOfLines={1}>{item.companyName}</Text> : null}
+              <Text style={styles.date}>{formatDateTime(item.date_time)}</Text>
+              {item.notes ? <Text style={styles.notes} numberOfLines={3}>{item.notes}</Text> : null}
+            </View>
           )}
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyText}>{tab === 'upcoming' ? 'No upcoming interviews.' : 'No past interviews.'}</Text>
-            </View>
+            <EmptyState
+              icon="calendar-clock-outline"
+              title={tab === 'upcoming' ? 'No upcoming interviews' : 'No past interviews'}
+              hint={tab === 'upcoming' ? 'Scheduled rounds will appear here.' : 'Completed rounds will appear here.'}
+            />
           }
         />
       )}
@@ -162,20 +162,17 @@ export default function StudentInterviewsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Theme.colors.background },
-  toggleWrap: { paddingHorizontal: Theme.spacing.md, paddingTop: Theme.spacing.sm },
-  list: { padding: Theme.spacing.md, gap: Theme.spacing.sm },
-  card: { backgroundColor: Theme.colors.surface, borderRadius: Theme.borderRadius.lg, borderWidth: 1, borderColor: Theme.colors.border, marginBottom: Theme.spacing.sm },
-  cardContent: { padding: Theme.spacing.md, gap: 4 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  round: { fontSize: 16, fontWeight: '700', color: Theme.colors.primaryText },
-  progress: { fontSize: 12, fontWeight: '700', color: '#0F766E' },
-  modePill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: Theme.borderRadius.pill },
-  modeText: { fontSize: 10, fontWeight: '700' },
-  job: { fontSize: 14, fontWeight: '600', color: Theme.colors.primaryText },
-  company: { fontSize: 13, color: Theme.colors.secondaryText },
-  date: { fontSize: 13, color: Theme.colors.primaryAccent, fontWeight: '600' },
-  notes: { fontSize: 12, color: Theme.colors.secondaryText, marginTop: 4 },
-  empty: { alignItems: 'center', marginTop: 60, padding: Theme.spacing.xl },
-  emptyText: { fontSize: 14, color: Theme.colors.secondaryText, textAlign: 'center' },
+  container: { flex: 1, backgroundColor: C.paper },
+  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent, paddingHorizontal: 16, paddingTop: 16 },
+  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, paddingHorizontal: 16, marginTop: 4 },
+  toggleWrap: { paddingHorizontal: 16, paddingTop: 12 },
+  list: { paddingHorizontal: 16, paddingBottom: 24, gap: 12 },
+  card: { backgroundColor: C.card, borderRadius: 22, borderWidth: 1, borderColor: C.line, padding: 18, gap: 4 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  round: { fontSize: 17, fontWeight: '800', color: C.ink, letterSpacing: -0.3 },
+  progress: { fontSize: 12, fontWeight: '800', color: C.teal },
+  job: { fontSize: 15, fontWeight: '700', color: C.ink },
+  company: { fontSize: 13, color: C.muted },
+  date: { fontSize: 13, color: C.accent, fontWeight: '700' },
+  notes: { fontSize: 13, color: C.muted, marginTop: 4, lineHeight: 20 },
 });

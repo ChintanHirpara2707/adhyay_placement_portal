@@ -1,51 +1,51 @@
 import React from 'react';
-import { StyleSheet, View, ScrollView } from 'react-native';
-import { Card, Text } from 'react-native-paper';
+import { StyleSheet, View } from 'react-native';
+import { Text } from 'react-native-paper';
+import { MotiView } from 'moti';
 import { useAuthStore } from '@/store/authStore';
-import { Theme } from '@/theme/theme';
+import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
+import { Screen } from '@/components/ui/Screen';
+import { Card, StatusChip } from '@/components/ui/kit';
 import { getInitials } from '@/lib/format';
 
 export default function AdminProfileScreen() {
   const { user, role } = useAuthStore();
 
   return (
-    <View style={styles.container}>
+    <View style={styles.shell}>
       <TopNavbar title="Profile" subtitle="Administrator" />
-      <ScrollView contentContainerStyle={styles.body}>
-        <Card style={styles.card} elevation={1}>
-          <Card.Content style={styles.cardContent}>
-            <View style={styles.avatarWrap}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{getInitials('Admin', user?.email)}</Text>
-              </View>
-              <Text style={styles.name}>Placement Admin</Text>
-              <Text style={styles.email}>{user?.email ?? ''}</Text>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{String(role ?? 'admin').toUpperCase()}</Text>
-              </View>
+      <Screen>
+        <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
+          <Text style={styles.eyebrow}>Placement Cell</Text>
+          <Text style={styles.heading}>Admin profile</Text>
+        </MotiView>
+        <Card>
+          <View style={styles.avatarWrap}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{getInitials('Admin', user?.email)}</Text>
             </View>
-            <Text style={styles.hint}>
-              Admin accounts are created manually and are read-only here. Use the profile menu to log out.
-            </Text>
-          </Card.Content>
+            <Text style={styles.name}>Placement Admin</Text>
+            <Text style={styles.email} numberOfLines={1}>{user?.email ?? ''}</Text>
+            <StatusChip label={String(role ?? 'admin').toUpperCase()} tone="accent" />
+          </View>
+          <Text style={styles.hint}>
+            Admin accounts are created manually and are read-only here. Use the profile menu to log out.
+          </Text>
         </Card>
-      </ScrollView>
+      </Screen>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Theme.colors.background },
-  body: { padding: Theme.spacing.md },
-  card: { backgroundColor: Theme.colors.surface, borderWidth: 1, borderColor: Theme.colors.border, borderRadius: Theme.borderRadius.lg },
-  cardContent: { gap: 8 },
-  avatarWrap: { alignItems: 'center', gap: 4, paddingVertical: 8 },
-  avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: Theme.colors.primaryAccent, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 26 },
-  name: { fontSize: 18, fontWeight: '700', color: Theme.colors.primaryText },
-  email: { fontSize: 13, color: Theme.colors.secondaryText },
-  badge: { backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: Theme.borderRadius.pill, marginTop: 4 },
-  badgeText: { fontSize: 11, fontWeight: '700', color: Theme.colors.primaryAccent },
-  hint: { fontSize: 12, color: Theme.colors.secondaryText, textAlign: 'center', marginTop: 8 },
+  shell: { flex: 1, backgroundColor: C.paper },
+  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent },
+  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, marginTop: 4 },
+  avatarWrap: { alignItems: 'center', gap: 6, paddingVertical: 12 },
+  avatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#FFFFFF', fontWeight: '800', fontSize: 28 },
+  name: { fontSize: 20, fontWeight: '800', color: C.ink, letterSpacing: -0.5 },
+  email: { fontSize: 13, color: C.muted },
+  hint: { fontSize: 13, color: C.muted, textAlign: 'center', marginTop: 10, lineHeight: 20 },
 });

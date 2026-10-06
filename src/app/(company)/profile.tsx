@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { TextInput, Button, Text, Card, HelperText, ActivityIndicator } from 'react-native-paper';
+import { StyleSheet, View, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { TextInput, Button, Text, ActivityIndicator } from 'react-native-paper';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
+import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { Theme } from '@/theme/theme';
+import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
+import { Screen } from '@/components/ui/Screen';
+import { Card, StatusChip } from '@/components/ui/kit';
 import { getInitials } from '@/lib/format';
 
 const companySchema = z.object({
@@ -79,7 +82,7 @@ export default function CompanyProfileScreen() {
   if (fetching) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color={Theme.colors.primaryAccent} />
+        <ActivityIndicator size="large" color={C.accent} />
       </View>
     );
   }
@@ -87,77 +90,76 @@ export default function CompanyProfileScreen() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
       <TopNavbar title="Profile" subtitle="Company details" />
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        <Card style={styles.card} elevation={1}>
-          <Card.Content style={styles.cardContent}>
-            <View style={styles.avatarRow}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{getInitials(null, user?.email).charAt(0)}</Text>
-              </View>
-              <View style={[styles.badge, { backgroundColor: approved ? '#D1FAE5' : '#FEF3C7' }]}>
-                <Text style={[styles.badgeText, { color: approved ? Theme.colors.success : Theme.colors.warning }]}>
-                  {approved ? 'APPROVED' : 'PENDING APPROVAL'}
-                </Text>
-              </View>
+      <Screen>
+        <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
+          <Text style={styles.eyebrow}>Recruiter Workspace</Text>
+          <Text style={styles.heading}>Company profile</Text>
+        </MotiView>
+        <Card>
+          <View style={styles.avatarRow}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{getInitials(null, user?.email).charAt(0)}</Text>
             </View>
-            <Text style={styles.hint}>Approval status is read-only and managed by the placement cell.</Text>
+            <StatusChip label={approved ? 'Approved' : 'Pending Approval'} tone={approved ? 'success' : 'warning'} />
+          </View>
+          <Text style={styles.hint}>Approval status is read-only and managed by the placement cell.</Text>
 
-            <Controller
-              control={control}
-              name="company_name"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <View style={styles.field}>
-                  <Text style={styles.label}>Company Name</Text>
-                  <TextInput mode="outlined" onBlur={onBlur} onChangeText={onChange} value={value} error={!!errors.company_name} style={styles.input} />
-                  {errors.company_name ? <HelperText type="error" visible>{errors.company_name.message}</HelperText> : null}
-                </View>
-              )}
-            />
-            <Controller
-              control={control}
-              name="description"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <View style={styles.field}>
-                  <Text style={styles.label}>Description</Text>
-                  <TextInput mode="outlined" multiline numberOfLines={4} onBlur={onBlur} onChangeText={onChange} value={value} style={styles.input} />
-                </View>
-              )}
-            />
-            <Controller
-              control={control}
-              name="website"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <View style={styles.field}>
-                  <Text style={styles.label}>Website</Text>
-                  <TextInput mode="outlined" autoCapitalize="none" placeholder="https://…" onBlur={onBlur} onChangeText={onChange} value={value} error={!!errors.website} style={styles.input} />
-                  {errors.website ? <HelperText type="error" visible>{errors.website.message}</HelperText> : null}
-                </View>
-              )}
-            />
-            <Button mode="contained" loading={saving} disabled={!isDirty || saving} onPress={handleSubmit(onSave)} buttonColor={Theme.colors.primaryAccent} textColor="#fff" style={styles.save}>
-              Save Changes
-            </Button>
-          </Card.Content>
+          <Controller
+            control={control}
+            name="company_name"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <View style={styles.field}>
+                <Text style={styles.label}>Company Name</Text>
+                <TextInput mode="outlined" onBlur={onBlur} onChangeText={onChange} value={value} error={!!errors.company_name} style={styles.input} outlineColor={C.line} activeOutlineColor={C.accent} outlineStyle={styles.outline} />
+                {errors.company_name ? <Text style={styles.errorText}>{errors.company_name.message}</Text> : null}
+              </View>
+            )}
+          />
+          <Controller
+            control={control}
+            name="description"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <View style={styles.field}>
+                <Text style={styles.label}>Description</Text>
+                <TextInput mode="outlined" multiline numberOfLines={4} onBlur={onBlur} onChangeText={onChange} value={value} style={styles.input} outlineColor={C.line} activeOutlineColor={C.accent} outlineStyle={styles.outline} />
+              </View>
+            )}
+          />
+          <Controller
+            control={control}
+            name="website"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <View style={styles.field}>
+                <Text style={styles.label}>Website</Text>
+                <TextInput mode="outlined" autoCapitalize="none" placeholder="https://…" onBlur={onBlur} onChangeText={onChange} value={value} error={!!errors.website} style={styles.input} outlineColor={C.line} activeOutlineColor={C.accent} outlineStyle={styles.outline} />
+                {errors.website ? <Text style={styles.errorText}>{errors.website.message}</Text> : null}
+              </View>
+            )}
+          />
+          <Button mode="contained" loading={saving} disabled={!isDirty || saving} onPress={handleSubmit(onSave)} buttonColor={C.ink} textColor="#FFFFFF" style={styles.save} contentStyle={styles.saveContent} labelStyle={styles.saveLabel}>
+            Save Changes
+          </Button>
         </Card>
-      </ScrollView>
+      </Screen>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Theme.colors.background },
-  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Theme.colors.background },
-  body: { padding: Theme.spacing.md, paddingBottom: 28 },
-  card: { backgroundColor: Theme.colors.surface, borderWidth: 1, borderColor: Theme.colors.border, borderRadius: Theme.borderRadius.lg },
-  cardContent: { gap: 8 },
-  avatarRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#7C3AED', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 22 },
-  badge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: Theme.borderRadius.pill },
-  badgeText: { fontSize: 11, fontWeight: '700' },
-  hint: { fontSize: 12, color: Theme.colors.secondaryText },
-  field: { marginTop: 4 },
-  label: { fontSize: 12, fontWeight: '600', color: Theme.colors.secondaryText, marginBottom: 4 },
-  input: { backgroundColor: Theme.colors.background, fontSize: 14 },
-  save: { borderRadius: Theme.borderRadius.button, marginTop: 8 },
+  container: { flex: 1, backgroundColor: C.paper },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: C.paper },
+  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent },
+  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, marginTop: 4 },
+  avatarRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  avatar: { width: 60, height: 60, borderRadius: 30, backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#FFFFFF', fontWeight: '800', fontSize: 24 },
+  hint: { fontSize: 12, color: C.muted, marginBottom: 8 },
+  field: { marginTop: 8 },
+  label: { fontSize: 13, fontWeight: '700', color: C.ink, marginBottom: 6 },
+  input: { backgroundColor: C.card, fontSize: 16 },
+  outline: { borderRadius: 14, borderWidth: 1.5 },
+  errorText: { color: C.danger, fontSize: 12, marginTop: 2 },
+  save: { borderRadius: 14, marginTop: 12 },
+  saveContent: { paddingVertical: 8 },
+  saveLabel: { fontSize: 16, fontWeight: '700' },
 });

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, FlatList, Alert, Linking } from 'react-native';
-import { Card, Text, Button, ActivityIndicator, Divider } from 'react-native-paper';
+import { Text, Button, ActivityIndicator } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
-import StatusPill from '@/components/StatusPill';
-import { Theme } from '@/theme/theme';
+import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
+import { StatusChip, statusToneFor, EmptyState } from '@/components/ui/kit';
 
 interface Applicant {
   id: string;
@@ -138,7 +139,7 @@ export default function JobApplicantsScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={Theme.colors.primary} />
+        <ActivityIndicator size="large" color={C.accent} />
         <Text style={styles.loadingText}>Fetching applicants list...</Text>
       </View>
     );
@@ -147,9 +148,23 @@ export default function JobApplicantsScreen() {
   const handleShortlist = async (applicant: Applicant) => handleUpdateStatus(applicant, 'shortlisted');
   const handleReject = async (applicant: Applicant) => handleUpdateStatus(applicant, 'rejected');
 
+  const STATUS_LABELS: Record<string, string> = {
+    applied: 'Applied',
+    shortlisted: 'Shortlisted',
+    interview_scheduled: 'Interview Scheduled',
+    selected: 'Selected',
+    rejected: 'Rejected',
+    round_cleared: 'Round Cleared',
+  };
+
   return (
     <View style={styles.container}>
       <TopNavbar title="Applicants" subtitle={jobTitle || 'Job applicants'} showBack />
+      <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
+        <Text style={styles.eyebrow}>Candidates</Text>
+        <Text style={styles.heading} numberOfLines={2}>{jobTitle || 'Job Position'}</Text>
+        <Text style={styles.countText}>Total Candidates: {visible.length}</Text>
+      </MotiView>
       <View style={styles.chips}>
         {(['all', 'applied', 'shortlisted', 'rejected'] as const).map((f) => (
           <Text key={f} onPress={() => setFilter(f)} style={[styles.chip, filter === f && styles.chipActive]}>
@@ -157,50 +172,34 @@ export default function JobApplicantsScreen() {
           </Text>
         ))}
       </View>
-      <View style={styles.header}>
-        <Text style={styles.headerText}>
-          Applicants for: <Text style={styles.boldText}>{jobTitle || 'Job Position'}</Text>
-        </Text>
-        <Text style={styles.countText}>
-          Total Candidates: {visible.length}
-        </Text>
-      </View>
 
       <FlatList
         data={visible}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
         renderItem={({ item }) => (
-          <Card style={styles.card} elevation={1}>
-            <Card.Content style={styles.cardContent}>
-              <View style={styles.applicantInfo}>
-                <View style={styles.nameRow}>
-                  <Text style={styles.nameText}>
-                    {item.students?.full_name || 'Incomplete Profile'}
-                  </Text>
-                  <StatusPill status={item.status} />
-                </View>
-                <Text style={styles.detailText}>
-                  Branch: <Text style={styles.boldText}>{item.students?.branch || 'N/A'}</Text>
-                </Text>
-                <Text style={styles.detailText}>
-                  CGPA: <Text style={styles.boldText}>{item.students?.cgpa || 'N/A'}</Text>
-                </Text>
-              </View>
+          <View style={styles.card}>
+            <View style={styles.nameRow}>
+              <Text style={styles.nameText} numberOfLines={1}>
+                {item.students?.full_name || 'Incomplete Profile'}
+              </Text>
+              <StatusChip label={STATUS_LABELS[item.status] ?? item.status} tone={statusToneFor(item.status)} />
+            </View>
+            <Text style={styles.detailText} numberOfLines={1}>
+              {item.students?.branch || 'N/A'} · CGPA {item.students?.cgpa ?? 'N/A'}
+            </Text>
 
-              <Divider style={styles.divider} />
-
-              <View style={styles.actionsRow}>
+            <View style={styles.actionsRow}>
                 {item.students?.resume_url && (
                   <Button
                     mode="outlined"
                     compact
                     onPress={() => Linking.openURL(item.students!.resume_url!)}
                     icon="file-pdf-box"
-                    textColor={Theme.colors.primary}
+                    textColor={C.accent}
                     style={styles.resumeBtn}
                   >
-                    View Resume
+                    Resume
                   </Button>
                 )}
 
@@ -211,7 +210,7 @@ export default function JobApplicantsScreen() {
                       compact
                       onPress={() => handleShortlist(item)}
                       style={styles.shortlistBtn}
-                      buttonColor={Theme.colors.primary}
+                      buttonColor={C.ink}
                       textColor="#FFFFFF"
                     >
                       Shortlist
@@ -221,7 +220,7 @@ export default function JobApplicantsScreen() {
                       compact
                       onPress={() => handleReject(item)}
                       style={styles.rejectBtn}
-                      textColor={Theme.colors.error}
+                      textColor={C.danger}
                     >
                       Reject
                     </Button>
@@ -231,20 +230,19 @@ export default function JobApplicantsScreen() {
                   mode="text"
                   compact
                   onPress={() => router.push({ pathname: '/(company)/applicant/[id]' as any, params: { id: item.id } })}
-                  textColor={Theme.colors.primaryAccent}
+                  textColor={C.accent}
                 >
                   View & Interview
                 </Button>
               </View>
-            </Card.Content>
-          </Card>
+          </View>
         )}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              No applications received for this job yet.
-            </Text>
-          </View>
+          <EmptyState
+            icon="account-search-outline"
+            title="No applications yet"
+            hint="No applications received for this job yet."
+          />
         }
       />
     </View>
@@ -254,129 +252,112 @@ export default function JobApplicantsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: C.paper,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: Theme.spacing.lg,
-    backgroundColor: Theme.colors.background,
+    padding: 16,
+    backgroundColor: C.paper,
   },
   loadingText: {
-    marginTop: Theme.spacing.md,
-    color: Theme.colors.textSecondary,
-    fontSize: Theme.typography.sizes.body,
+    marginTop: 12,
+    color: C.muted,
+    fontSize: 14,
   },
-  header: {
-    padding: Theme.spacing.lg,
-    backgroundColor: Theme.colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: Theme.colors.border,
-  },
-  headerText: {
-    fontSize: Theme.typography.sizes.sectionHeader,
-    color: Theme.colors.textPrimary,
-  },
-  boldText: {
-    fontWeight: Theme.typography.weights.bold as any,
-    color: Theme.colors.textPrimary,
-  },
+  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent, paddingHorizontal: 16, paddingTop: 16 },
+  heading: { fontSize: 26, fontWeight: '800', color: C.ink, letterSpacing: -0.8, paddingHorizontal: 16, marginTop: 4 },
   countText: {
-    color: Theme.colors.textSecondary,
+    color: C.muted,
     marginTop: 4,
-    fontSize: Theme.typography.sizes.caption,
+    fontSize: 12,
+    paddingHorizontal: 16,
   },
   listContainer: {
-    padding: Theme.spacing.lg,
-    gap: Theme.spacing.md,
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+    gap: 12,
   },
   card: {
-    backgroundColor: Theme.colors.card,
-    borderRadius: Theme.borderRadius.card,
+    backgroundColor: C.card,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: Theme.colors.border,
-  },
-  cardContent: {
-    gap: Theme.spacing.sm,
-    padding: Theme.spacing.md,
-  },
-  applicantInfo: {
-    gap: 4,
+    borderColor: C.line,
+    padding: 18,
+    gap: 6,
   },
   nameRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    gap: 8,
   },
   nameText: {
-    fontSize: Theme.typography.sizes.cardTitle,
-    fontWeight: Theme.typography.weights.bold as any,
-    color: Theme.colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '800',
+    color: C.ink,
     flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
+    letterSpacing: -0.3,
   },
   detailText: {
-    fontSize: Theme.typography.sizes.body,
-    color: Theme.colors.textSecondary,
+    fontSize: 14,
+    color: C.muted,
   },
   divider: {
     marginVertical: 4,
-    backgroundColor: Theme.colors.border,
+    backgroundColor: C.line,
   },
   actionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: Theme.spacing.sm,
-    paddingTop: 4,
+    gap: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: C.line,
+    marginTop: 4,
   },
   resumeBtn: {
-    borderRadius: Theme.borderRadius.button,
-    borderColor: Theme.colors.primary,
+    borderRadius: 14,
+    borderColor: C.accent,
   },
   decisionButtons: {
     flexDirection: 'row',
-    gap: Theme.spacing.sm,
+    flexWrap: 'wrap',
+    gap: 8,
   },
   shortlistBtn: {
-    borderRadius: Theme.borderRadius.button,
+    borderRadius: 14,
   },
   rejectBtn: {
-    borderRadius: Theme.borderRadius.button,
-    borderColor: Theme.colors.error,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    padding: Theme.spacing.xl,
-    marginTop: 60,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: Theme.colors.textSecondary,
-    fontSize: Theme.typography.sizes.body,
+    borderRadius: 14,
+    borderColor: C.danger,
   },
   chips: {
     flexDirection: 'row',
     gap: 8,
-    paddingHorizontal: Theme.spacing.md,
-    paddingTop: Theme.spacing.sm,
+    paddingHorizontal: 16,
+    paddingTop: 12,
     flexWrap: 'wrap',
   },
   chip: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: Theme.borderRadius.pill,
-    borderWidth: 1,
-    borderColor: Theme.colors.border,
-    color: Theme.colors.secondaryText,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: C.line,
+    backgroundColor: C.card,
+    color: C.muted,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   chipActive: {
-    backgroundColor: Theme.colors.primaryAccent,
-    borderColor: Theme.colors.primaryAccent,
-    color: '#fff',
+    backgroundColor: C.ink,
+    borderColor: C.ink,
+    color: '#FFFFFF',
   },
 });

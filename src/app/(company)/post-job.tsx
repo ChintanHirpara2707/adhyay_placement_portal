@@ -193,10 +193,10 @@ export default function PostJobScreen() {
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-        <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
-          <Text style={styles.eyebrow}>New Opening</Text>
+        <View>
           <Text style={styles.heading}>Post a job</Text>
-        </MotiView>
+          <Text style={styles.subheading}>Describe the role, who can apply and how you will hire.</Text>
+        </View>
         <Card style={styles.card} elevation={0}>
           <Card.Content style={styles.cardContent}>
             <Controller
@@ -214,7 +214,7 @@ export default function PostJobScreen() {
                     style={styles.input}
                     outlineColor={C.line}
                     activeOutlineColor={C.accent}
-                    outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
+                    outlineStyle={{ borderRadius: 10, borderWidth: 1 }}
                   />
                   {errors.title && (
                     <HelperText type="error" visible={!!errors.title} style={styles.errorText}>
@@ -242,7 +242,7 @@ export default function PostJobScreen() {
                     style={styles.input}
                     outlineColor={C.line}
                     activeOutlineColor={C.accent}
-                    outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
+                    outlineStyle={{ borderRadius: 10, borderWidth: 1 }}
                   />
                   {errors.description && (
                     <HelperText type="error" visible={!!errors.description} style={styles.errorText}>
@@ -269,7 +269,7 @@ export default function PostJobScreen() {
                     style={styles.input}
                     outlineColor={C.line}
                     activeOutlineColor={C.accent}
-                    outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
+                    outlineStyle={{ borderRadius: 10, borderWidth: 1 }}
                   />
                   {errors.ctc && (
                     <HelperText type="error" visible={!!errors.ctc} style={styles.errorText}>
@@ -296,7 +296,7 @@ export default function PostJobScreen() {
                     style={styles.input}
                     outlineColor={C.line}
                     activeOutlineColor={C.accent}
-                    outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
+                    outlineStyle={{ borderRadius: 10, borderWidth: 1 }}
                   />
                   {errors.min_cgpa && (
                     <HelperText type="error" visible={!!errors.min_cgpa} style={styles.errorText}>
@@ -323,7 +323,7 @@ export default function PostJobScreen() {
                     style={styles.input}
                     outlineColor={C.line}
                     activeOutlineColor={C.accent}
-                    outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
+                    outlineStyle={{ borderRadius: 10, borderWidth: 1 }}
                   />
                   {errors.deadline && (
                     <HelperText type="error" visible={!!errors.deadline} style={styles.errorText}>
@@ -395,11 +395,11 @@ export default function PostJobScreen() {
               <View style={styles.stepperRow}>
                 <Text style={styles.switchLabel}>How many rounds?</Text>
                 <View style={styles.stepper}>
-                  <Button mode="outlined" compact onPress={() => setRounds((watchedRounds || 1) - 1)} style={styles.stepBtn}>
+                  <Button mode="outlined" compact accessibilityLabel="Fewer rounds" onPress={() => setRounds((watchedRounds || 1) - 1)} style={styles.stepBtn}>
                     −
                   </Button>
                   <Text style={styles.stepValue}>{watchedRounds}</Text>
-                  <Button mode="outlined" compact onPress={() => setRounds((watchedRounds || 1) + 1)} style={styles.stepBtn}>
+                  <Button mode="outlined" compact accessibilityLabel="More rounds" onPress={() => setRounds((watchedRounds || 1) + 1)} style={styles.stepBtn}>
                     +
                   </Button>
                 </View>
@@ -425,7 +425,7 @@ export default function PostJobScreen() {
                           style={styles.input}
                           outlineColor={C.line}
                           activeOutlineColor={C.accent}
-                          outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
+                          outlineStyle={{ borderRadius: 10, borderWidth: 1 }}
                         />
                         <Text style={[styles.inputLabel, { marginTop: 6 }]}>Round {i + 1} date (YYYY-MM-DD, optional)</Text>
                         <TextInput
@@ -436,7 +436,7 @@ export default function PostJobScreen() {
                           style={styles.input}
                           outlineColor={C.line}
                           activeOutlineColor={C.accent}
-                          outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
+                          outlineStyle={{ borderRadius: 10, borderWidth: 1 }}
                         />
                       </View>
                     ))}
@@ -479,11 +479,18 @@ export default function PostJobScreen() {
                           style={[styles.input, styles.profileInput]}
                           outlineColor={C.line}
                           activeOutlineColor={C.accent}
-                          outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
+                          outlineStyle={{ borderRadius: 10, borderWidth: 1 }}
                         />
                         {(value ?? []).length > 1 ? (
-                          <Button mode="outlined" compact onPress={() => onChange((value ?? []).filter((_, j) => j !== i))} style={styles.stepBtn}>
-                            ✕
+                          <Button
+                            mode="outlined"
+                            compact
+                            icon="close"
+                            accessibilityLabel={`Remove role ${i + 1}`}
+                            onPress={() => onChange((value ?? []).filter((_, j) => j !== i))}
+                            style={styles.stepBtn}
+                          >
+                            {''}
                           </Button>
                         ) : null}
                       </View>
@@ -518,7 +525,7 @@ export default function PostJobScreen() {
                     style={styles.input}
                     outlineColor={C.line}
                     activeOutlineColor={C.accent}
-                    outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
+                    outlineStyle={{ borderRadius: 10, borderWidth: 1 }}
                   />
                   {errors.stipend && (
                     <HelperText type="error" visible={!!errors.stipend} style={styles.errorText}>
@@ -546,7 +553,7 @@ export default function PostJobScreen() {
                     style={styles.input}
                     outlineColor={C.line}
                     activeOutlineColor={C.accent}
-                    outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
+                    outlineStyle={{ borderRadius: 10, borderWidth: 1 }}
                   />
                   {errors.bond_years && (
                     <HelperText type="error" visible={!!errors.bond_years} style={styles.errorText}>
@@ -573,7 +580,7 @@ export default function PostJobScreen() {
                     style={styles.input}
                     outlineColor={C.line}
                     activeOutlineColor={C.accent}
-                    outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
+                    outlineStyle={{ borderRadius: 10, borderWidth: 1 }}
                   />
                   {errors.location && (
                     <HelperText type="error" visible={!!errors.location} style={styles.errorText}>
@@ -590,7 +597,8 @@ export default function PostJobScreen() {
               disabled={loading || isSubmitting}
               onPress={handleSubmit(onSubmit)}
               style={styles.button}
-              buttonColor={C.ink}
+              contentStyle={styles.buttonContent}
+              buttonColor={C.accent}
               textColor="#FFFFFF"
             >
               Publish Job Posting
@@ -610,14 +618,17 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 40,
     gap: 12,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
   },
-  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent },
-  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, marginTop: 4 },
+  heading: { fontSize: 26, fontWeight: '700', color: C.ink, letterSpacing: -0.5 },
+  subheading: { fontSize: 15, color: C.muted, marginTop: 2 },
   card: {
     backgroundColor: C.card,
-    borderRadius: 24,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: C.line,
   },
@@ -630,7 +641,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     color: C.ink,
     marginBottom: 6,
   },
@@ -657,13 +668,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   checkboxSection: {
-    marginTop: 12,
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: C.line,
     gap: 4,
   },
   checkboxSectionTitle: {
-    fontWeight: '800',
+    fontWeight: '600',
     fontSize: 16,
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
     color: C.ink,
     marginBottom: 4,
   },
@@ -691,12 +705,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   stepBtn: {
-    borderRadius: 14,
+    borderRadius: 10,
     minWidth: 44,
+    minHeight: 44,
+    justifyContent: 'center',
+    borderColor: C.line,
   },
   stepValue: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '700',
     color: C.ink,
     minWidth: 28,
     textAlign: 'center',
@@ -714,12 +731,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   addRoleBtn: {
-    borderRadius: 14,
+    borderRadius: 10,
+    borderColor: C.line,
     alignSelf: 'flex-start',
     marginTop: 4,
   },
   button: {
-    marginTop: 20,
-    borderRadius: 14,
+    marginTop: 24,
+    borderRadius: 10,
   },
+  buttonContent: { minHeight: 48 },
 });

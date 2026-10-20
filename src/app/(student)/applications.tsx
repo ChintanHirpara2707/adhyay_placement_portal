@@ -2,14 +2,12 @@ import React, { useState, useCallback } from 'react';
 import { StyleSheet, View, FlatList, Alert, RefreshControl } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useFocusEffect } from 'expo-router';
-import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
 import { JobCardSkeleton } from '@/components/SkeletonLoader';
-import { WebOnlyDecorations } from '@/components/WebOnlyDecorations';
-import { StatusChip, statusToneFor, EmptyState } from '@/components/ui/kit';
+import { StatusChip, statusToneFor, EmptyState, PageHeader, FilterChips, pageColumn } from '@/components/ui/kit';
 import { formatCTC } from '@/lib/format';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -109,21 +107,18 @@ export default function ApplicationsScreen() {
 
   return (
     <View style={styles.container}>
-      <WebOnlyDecorations />
       <TopNavbar title="Applications" subtitle="Track your status" />
 
-      <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
-        <Text style={styles.eyebrow}>Your Pipeline</Text>
-        <Text style={styles.heading}>Applications</Text>
-      </MotiView>
+      <PageHeader title="Applications" subtitle="Track every drive you have applied to." />
 
-      <View style={styles.chips}>
-        {(['all', 'active', 'round_cleared', 'selected', 'rejected'] as const).map((f) => (
-          <Text key={f} onPress={() => setFilter(f)} style={[styles.chip, filter === f && styles.chipActive]}>
-            {f[0].toUpperCase() + f.slice(1).replace('_', ' ')}
-          </Text>
-        ))}
-      </View>
+      <FilterChips
+        value={filter}
+        onChange={setFilter}
+        options={(['all', 'active', 'round_cleared', 'selected', 'rejected'] as const).map((f) => ({
+          value: f,
+          label: f[0].toUpperCase() + f.slice(1).replace('_', ' '),
+        }))}
+      />
 
       {loading ? (
         <View style={styles.listContainer}>
@@ -185,19 +180,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: C.paper,
   },
-  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent, paddingHorizontal: 16, paddingTop: 16 },
-  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, paddingHorizontal: 16, marginTop: 4 },
   listContainer: {
-    paddingHorizontal: 16,
+    ...pageColumn(720),
     paddingBottom: 24,
+    paddingTop: 4,
     gap: 12,
   },
   card: {
     backgroundColor: C.card,
-    borderRadius: 22,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: C.line,
-    padding: 18,
+    padding: 16,
     gap: 6,
   },
   headerRow: {
@@ -207,8 +201,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   jobTitle: {
-    fontSize: 17,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '600',
     color: C.ink,
     flex: 1,
     minWidth: 0,
@@ -221,7 +215,7 @@ const styles = StyleSheet.create({
   },
   roundClearedNote: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
     color: C.teal,
     backgroundColor: C.tealSoft,
     borderRadius: 8,
@@ -240,28 +234,5 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 12,
     color: C.muted,
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: C.line,
-    backgroundColor: C.card,
-    color: C.muted,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  chipActive: {
-    backgroundColor: C.ink,
-    borderColor: C.ink,
-    color: '#FFFFFF',
   },
 });

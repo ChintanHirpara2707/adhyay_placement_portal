@@ -1,8 +1,7 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, View, FlatList, Alert, RefreshControl, Platform } from 'react-native';
+import { StyleSheet, View, FlatList, Alert, RefreshControl } from 'react-native';
 import { Text, Button, Banner, Searchbar } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useFeedStore } from '@/store/feedStore';
@@ -10,9 +9,7 @@ import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
 import { JobCardSkeleton } from '@/components/SkeletonLoader';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
-import { WebOnlyDecorations } from '@/components/WebOnlyDecorations';
-import { StatusChip } from '@/components/ui/kit';
-import { EmptyState } from '@/components/ui/kit';
+import { StatusChip, EmptyState, PageHeader, pageColumn } from '@/components/ui/kit';
 import { formatCTC, formatDeadline, isDeadlineUrgent } from '@/lib/format';
 
 interface JobPosting {
@@ -124,7 +121,6 @@ export default function StudentJobsScreen() {
 
   return (
     <View style={styles.container}>
-      <WebOnlyDecorations />
       <TopNavbar title="Job Feed" subtitle="Eligible opportunities" />
       <Banner
         visible={profileIncomplete}
@@ -133,10 +129,7 @@ export default function StudentJobsScreen() {
       >
         Your profile is incomplete. Add CGPA and branch to see matching jobs.
       </Banner>
-      <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
-        <Text style={styles.eyebrow}>Open Drives</Text>
-        <Text style={styles.heading}>Find your chapter</Text>
-      </MotiView>
+      <PageHeader title="Job feed" subtitle="Open drives you are eligible for." />
       <View style={styles.searchWrap}>
         <Searchbar
           placeholder="Search title or company"
@@ -144,10 +137,13 @@ export default function StudentJobsScreen() {
           onChangeText={setQuery}
           style={styles.search}
           inputStyle={styles.searchInput}
+          iconColor={C.muted}
+          placeholderTextColor={C.muted}
+          accessibilityLabel="Search jobs"
         />
       </View>
       <Text style={styles.resultCount}>
-        {visible.length > 0 ? `${visible.length} opportunities match your profile` : 'No matches'}
+        {visible.length > 0 ? `${visible.length} ${visible.length === 1 ? 'opportunity matches' : 'opportunities match'} your profile` : 'No matches'}
       </Text>
       {loading ? (
         <View style={styles.listContainer}>
@@ -201,22 +197,15 @@ export default function StudentJobsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.paper },
-  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent, paddingHorizontal: 16, paddingTop: 16 },
-  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, paddingHorizontal: 16, marginTop: 4 },
-  searchWrap: { paddingHorizontal: 16, paddingTop: 12 },
-  search: { backgroundColor: C.card, borderWidth: 1, borderColor: C.line, borderRadius: 14, elevation: 0 },
+  searchWrap: { ...pageColumn(720), paddingTop: 8 },
+  search: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line, borderRadius: 12, elevation: 0, minHeight: 48 },
   searchInput: { fontSize: 16 },
-  resultCount: { textAlign: 'center', fontSize: 12, color: C.muted, marginVertical: 8 },
-  listContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-    gap: 12,
-    ...(Platform.OS === 'web' ? ({ maxWidth: 720, alignSelf: 'center', width: '100%' } as any) : null),
-  },
-  card: { backgroundColor: C.card, borderRadius: 22, borderWidth: 1, borderColor: C.line, padding: 18, gap: 8 },
+  resultCount: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: 16, fontSize: 13, color: C.muted, marginVertical: 10 },
+  listContainer: { ...pageColumn(720), paddingBottom: 24, gap: 12 },
+  card: { backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 16, gap: 8 },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
-  jobTitle: { fontSize: 17, fontWeight: '800', color: C.ink, flex: 1, minWidth: 0, flexShrink: 1, letterSpacing: -0.3 },
+  jobTitle: { fontSize: 16, fontWeight: '600', color: C.ink, flex: 1, minWidth: 0, flexShrink: 1, letterSpacing: -0.3 },
   companyName: { fontSize: 14, color: C.muted },
   infoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 },
-  retryButton: { borderRadius: 14, borderColor: C.line, marginTop: 12 },
+  retryButton: { borderRadius: 12, borderColor: C.line, marginTop: 12 },
 });

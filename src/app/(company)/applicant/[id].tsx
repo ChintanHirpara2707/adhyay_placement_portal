@@ -1,3 +1,4 @@
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { TopNavbar } from "@/components/TopNavbar";
 import { getInitials } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
@@ -377,7 +378,7 @@ export default function ApplicantDetailScreen() {
           Alert.alert("Notification Failed", "Student placed, but the placement notification failed: " + notifError.message);
           return;
         }
-        Alert.alert("Placed 🎉", `${student?.full_name ?? "Student"} is placed at ${companyName}.`);
+        Alert.alert("Placed", `${student?.full_name ?? "Student"} is placed at ${companyName}.`);
         await refreshRoundState();
       }
     } catch (e: any) {
@@ -492,7 +493,7 @@ export default function ApplicantDetailScreen() {
                       onPress={() => Linking.openURL(student.resume_url)}
                     >
                       <View style={styles.resumeIconWrap}>
-                        <Text style={styles.resumeIcon}>📄</Text>
+                        <MaterialCommunityIcons name="file-document-outline" size={18} color={C.accent} />
                       </View>
                       <View style={styles.resumeMeta}>
                         <Text style={styles.resumeTitle}>
@@ -513,7 +514,7 @@ export default function ApplicantDetailScreen() {
                   ) : (
                     <View style={styles.emptyResumeBox}>
                       <Text style={styles.emptyResumeText}>
-                        ⚠️ No resume attached with this application.
+                        No resume attached with this application.
                       </Text>
                     </View>
                   )}
@@ -526,7 +527,7 @@ export default function ApplicantDetailScreen() {
               <Card style={styles.card} elevation={0}>
                 <Card.Content style={styles.cardContent}>
                   <View style={styles.placedBanner}>
-                    <Text style={styles.placedTitle}>Student Placed 🎉</Text>
+                    <Text style={styles.placedTitle}>Student placed</Text>
                     <Text style={styles.placedText}>
                       {student?.full_name ?? "This student"} cleared all {totalRounds}{" "}
                       round{totalRounds === 1 ? "" : "s"} for {jobTitle}. No further
@@ -553,8 +554,9 @@ export default function ApplicantDetailScreen() {
                       disabled={marking}
                       onPress={handleMarkSelected}
                       buttonColor={C.success}
-                      textColor={C.card}
+                      textColor="#FFFFFF"
                       style={styles.markBtn}
+                      contentStyle={styles.markBtnContent}
                     >
                       Selected
                     </Button>
@@ -565,6 +567,7 @@ export default function ApplicantDetailScreen() {
                       onPress={handleMarkRejected}
                       textColor={C.danger}
                       style={styles.markBtn}
+                      contentStyle={styles.markBtnContent}
                     >
                       Rejected
                     </Button>
@@ -624,8 +627,8 @@ export default function ApplicantDetailScreen() {
                     value={mode}
                     onValueChange={(v) => setMode(v as "online" | "offline")}
                     buttons={[
-                      { value: "online", label: "💻 Online" },
-                      { value: "offline", label: "🏢 On-Campus" },
+                      { value: "online", label: "Online", icon: "laptop" },
+                      { value: "offline", label: "On-Campus", icon: "office-building-outline" },
                     ]}
                     style={styles.segment}
                   />
@@ -646,10 +649,10 @@ export default function ApplicantDetailScreen() {
                           width: "100%",
                           height: 48,
                           padding: "0 12px",
-                          borderRadius: 8,
+                          borderRadius: 10,
                           border: `1px solid ${errors.date_time && !selectedDateStr ? C.danger : C.line}`,
                           backgroundColor: C.card,
-                          fontSize: 14,
+                          fontSize: 16,
                           fontFamily: "inherit",
                           color: C.ink,
                           outline: "none",
@@ -725,7 +728,7 @@ export default function ApplicantDetailScreen() {
                   {selectedDateStr && selectedTimeSlot ? (
                     <View style={styles.slotConfirmedBanner}>
                       <Text style={styles.slotConfirmedText}>
-                        🕒 Selected Slot:{" "}
+                        Selected slot:{" "}
                         <Text style={{ fontWeight: "700" }}>
                           {selectedDateStr} at {selectedTimeSlot}
                         </Text>
@@ -769,8 +772,8 @@ export default function ApplicantDetailScreen() {
                       "Please ensure interview round, date, and a time slot are selected.",
                     ),
                   )}
-                  buttonColor={C.ink}
-                  textColor={C.card}
+                  buttonColor={C.accent}
+                  textColor="#FFFFFF"
                   style={styles.submit}
                   contentStyle={styles.submitContent}
                 >
@@ -793,7 +796,10 @@ const styles = StyleSheet.create({
   body: {
     padding: 16,
     gap: 16,
-    paddingBottom: 36,
+    paddingBottom: 40,
+    width: "100%",
+    maxWidth: 720,
+    alignSelf: "center",
   },
   loadingContainer: {
     paddingVertical: 40,
@@ -809,7 +815,7 @@ const styles = StyleSheet.create({
     backgroundColor: C.card,
     borderWidth: 1,
     borderColor: C.line,
-    borderRadius: 24,
+    borderRadius: 14,
   },
   cardContent: {
     padding: 16,
@@ -824,12 +830,12 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: C.ink,
+    backgroundColor: C.accentSoft,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
-    color: C.card,
+    color: C.accentStrong,
     fontWeight: "700",
     fontSize: 20,
   },
@@ -864,11 +870,11 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 17,
-    fontWeight: "700",
+    fontWeight: "600",
     color: C.ink,
   },
   subJob: {
-    fontSize: 12,
+    fontSize: 13,
     color: C.muted,
   },
   subJobTitle: {
@@ -877,11 +883,11 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: "row",
-    backgroundColor: C.paper,
+    backgroundColor: C.surface,
     borderRadius: 10,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderWidth: 1,
-    borderColor: C.soft,
+    borderColor: C.line,
     alignItems: "center",
   },
   statBox: {
@@ -894,14 +900,15 @@ const styles = StyleSheet.create({
     backgroundColor: C.line,
   },
   statLabel: {
-    fontSize: 10,
-    fontWeight: "700",
+    fontSize: 11,
+    fontWeight: "600",
     color: C.muted,
+    letterSpacing: 0.5,
     marginBottom: 2,
   },
   statVal: {
-    fontSize: 13,
-    fontWeight: "700",
+    fontSize: 14,
+    fontWeight: "600",
     color: C.ink,
   },
   skillsSection: {
@@ -929,47 +936,45 @@ const styles = StyleSheet.create({
   resumeBox: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: C.successSoft,
+    backgroundColor: C.surface,
     borderWidth: 1,
-    borderColor: C.success,
+    borderColor: C.line,
     borderRadius: 10,
     padding: 10,
     marginTop: 6,
     gap: 10,
+    minHeight: 56,
   },
   resumeIconWrap: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: C.successSoft,
+    backgroundColor: C.accentSoft,
     alignItems: "center",
     justifyContent: "center",
-  },
-  resumeIcon: {
-    fontSize: 16,
   },
   resumeMeta: {
     flex: 1,
   },
   resumeTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
-    color: C.success,
+    color: C.ink,
   },
   resumeSubtitle: {
-    fontSize: 11,
-    color: C.success,
+    fontSize: 12,
+    color: C.muted,
   },
   emptyResumeBox: {
     backgroundColor: C.warningSoft,
     borderWidth: 1,
-    borderColor: C.warning,
+    borderColor: C.line,
     borderRadius: 10,
     padding: 12,
     marginTop: 6,
   },
   emptyResumeText: {
-    fontSize: 12,
+    fontSize: 13,
     color: C.warning,
     fontWeight: "500",
   },
@@ -977,12 +982,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sectionTitle: {
-    fontSize: 15,
-    fontWeight: "700",
+    fontSize: 16,
+    fontWeight: "600",
     color: C.ink,
   },
   sectionSubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     color: C.muted,
     marginTop: 1,
   },
@@ -990,14 +995,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   fieldLabel: {
-    fontSize: 12,
-    color: C.muted,
+    fontSize: 13,
+    color: C.inkSoft,
     marginBottom: 6,
     fontWeight: "600",
   },
   input: {
     backgroundColor: C.card,
-    fontSize: 14,
+    fontSize: 16,
   },
   segment: {
     backgroundColor: C.card,
@@ -1012,61 +1017,65 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   slotItem: {
+    minHeight: 40,
+    justifyContent: "center",
     paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: C.soft,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: C.card,
     borderWidth: 1,
     borderColor: C.line,
   },
   slotItemSelected: {
-    backgroundColor: C.ink,
-    borderColor: C.ink,
+    backgroundColor: C.accentSoft,
+    borderColor: C.accent,
   },
   slotText: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: "500",
     color: C.ink,
   },
   slotTextSelected: {
-    color: C.card,
+    color: C.accentStrong,
+    fontWeight: "600",
   },
   customTimeInput: {
     backgroundColor: C.card,
-    fontSize: 13,
+    fontSize: 16,
     marginTop: 4,
   },
   slotConfirmedBanner: {
     marginTop: 8,
     backgroundColor: C.accentSoft,
-    borderRadius: 6,
-    padding: 8,
+    borderRadius: 10,
+    padding: 10,
     borderWidth: 1,
-    borderColor: C.accent,
+    borderColor: C.line,
   },
   slotConfirmedText: {
-    fontSize: 12,
-    color: C.accent,
+    fontSize: 13,
+    color: C.accentStrong,
   },
   submit: {
-    borderRadius: 8,
+    borderRadius: 10,
     marginTop: 8,
   },
   submitContent: {
     paddingVertical: 6,
+    minHeight: 48,
   },
   roundDisplay: {
     backgroundColor: C.accentSoft,
     borderWidth: 1,
-    borderColor: C.accent,
-    borderRadius: 8,
+    borderColor: C.line,
+    borderRadius: 10,
     padding: 12,
     gap: 2,
   },
   roundDisplayText: {
     fontSize: 15,
-    fontWeight: "700",
-    color: C.accent,
+    fontWeight: "600",
+    color: C.accentStrong,
   },
   roundDisplaySub: {
     fontSize: 12,
@@ -1079,14 +1088,14 @@ const styles = StyleSheet.create({
   placedBanner: {
     backgroundColor: C.successSoft,
     borderWidth: 1,
-    borderColor: C.success,
+    borderColor: C.line,
     borderRadius: 10,
     padding: 14,
     gap: 4,
   },
   placedTitle: {
     fontSize: 17,
-    fontWeight: "700",
+    fontWeight: "600",
     color: C.success,
   },
   placedText: {
@@ -1101,6 +1110,9 @@ const styles = StyleSheet.create({
   },
   markBtn: {
     flex: 1,
-    borderRadius: 8,
+    borderRadius: 10,
+  },
+  markBtnContent: {
+    minHeight: 48,
   },
 });

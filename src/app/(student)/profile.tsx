@@ -1,5 +1,4 @@
 import { TopNavbar } from "@/components/TopNavbar";
-import { WebOnlyDecorations } from "@/components/WebOnlyDecorations";
 import { getInitials } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/authStore";
@@ -242,7 +241,6 @@ export default function StudentProfileScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
-      <WebOnlyDecorations />
       <TopNavbar
         title="Candidate Profile"
         subtitle="Campus Placement & Drive Record"
@@ -551,13 +549,13 @@ export default function StudentProfileScreen() {
                   numberOfLines={1}
                   onPress={() => Linking.openURL(savedResumeUrl)}
                 >
-                  🔗 {savedResumeUrl}
+                  {savedResumeUrl}
                 </Text>
               </View>
             ) : (
               <View style={styles.resumeMissingBanner}>
                 <Text style={styles.resumeMissingText}>
-                  ⚠️ No resume linked yet. Recruiters will not be able to
+                  No resume linked yet. Recruiters will not be able to
                   evaluate your profile.
                 </Text>
               </View>
@@ -613,7 +611,7 @@ export default function StudentProfileScreen() {
             disabled={!canSave || saving}
             onPress={handleSubmit(handleSave)}
             buttonColor={Theme.colors.primaryAccent}
-            textColor={C.card}
+            textColor="#FFFFFF"
             style={styles.saveButton}
             contentStyle={styles.saveButtonContent}
           >
@@ -645,13 +643,16 @@ const styles = StyleSheet.create({
   body: {
     padding: 16,
     gap: 16,
-    paddingBottom: 90,
+    paddingBottom: 100,
+    width: "100%",
+    maxWidth: 720,
+    alignSelf: "center",
   },
 
   /* Hero Header Card */
   heroCard: {
     backgroundColor: C.card,
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: C.line,
   },
@@ -668,17 +669,14 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: Theme.colors.primaryAccent,
+    backgroundColor: C.accentSoft,
+    borderWidth: 1,
+    borderColor: C.line,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: Theme.colors.primaryAccent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 2,
   },
   avatarText: {
-    color: C.card,
+    color: C.accentStrong,
     fontWeight: "700",
     fontSize: 22,
   },
@@ -755,7 +753,7 @@ const styles = StyleSheet.create({
     backgroundColor: C.card,
     borderWidth: 1,
     borderColor: C.line,
-    borderRadius: 14,
+    borderRadius: 12,
   },
   cardContent: {
     padding: 16,
@@ -788,23 +786,23 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   label: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
-    color: C.muted,
-    marginBottom: 5,
+    color: C.inkSoft,
+    marginBottom: 6,
   },
   input: {
     backgroundColor: C.card,
-    fontSize: 14,
+    fontSize: 16,
   },
   dropdown: {
-    borderRadius: 8,
+    borderRadius: 10,
     borderColor: C.line,
     borderWidth: 1,
   },
   dropdownContent: {
     justifyContent: "space-between",
-    paddingVertical: 4,
+    paddingVertical: 8,
   },
   menuContent: {
     backgroundColor: C.card,
@@ -834,8 +832,7 @@ const styles = StyleSheet.create({
   },
   emptySkillsText: {
     fontSize: 12,
-    color: C.faint,
-    fontStyle: "italic",
+    color: C.muted,
   },
 
   /* Resume Banners */
@@ -843,8 +840,8 @@ const styles = StyleSheet.create({
     gap: 4,
     backgroundColor: C.successSoft,
     borderWidth: 1,
-    borderColor: C.success,
-    borderRadius: 8,
+    borderColor: C.line,
+    borderRadius: 10,
     padding: 12,
     marginBottom: 4,
   },
@@ -873,15 +870,16 @@ const styles = StyleSheet.create({
   resumeMissingBanner: {
     backgroundColor: C.warningSoft,
     borderWidth: 1,
-    borderColor: C.warning,
-    borderRadius: 8,
-    padding: 10,
+    borderColor: C.line,
+    borderRadius: 10,
+    padding: 12,
     marginBottom: 4,
   },
   resumeMissingText: {
-    fontSize: 12,
+    fontSize: 13,
     color: C.warning,
     fontWeight: "500",
+    lineHeight: 18,
   },
   helperText: {
     fontSize: 11,
@@ -901,13 +899,11 @@ const styles = StyleSheet.create({
     borderTopColor: C.line,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    shadowColor: C.ink,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 4,
   },
   footerInner: {
+    width: "100%",
+    maxWidth: 720,
+    alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -921,10 +917,11 @@ const styles = StyleSheet.create({
     color: C.muted,
   },
   saveButton: {
-    borderRadius: 8,
+    borderRadius: 10,
     minWidth: 140,
   },
   saveButtonContent: {
     paddingVertical: 4,
+    minHeight: 44,
   },
 });

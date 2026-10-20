@@ -181,8 +181,8 @@ export default function JobDetailsScreen() {
     <View style={styles.page}>
       <TopNavbar title="Announcement" subtitle={companyName} showBack />
       <Screen>
-        <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 450 }}>
-          <Card>
+        <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300 }}>
+          <Card style={styles.sheet}>
             {/* 1. HEADER */}
             <View style={styles.headerBlock}>
               <Text style={styles.eyebrow}>Campus Placement Drive</Text>
@@ -277,19 +277,19 @@ export default function JobDetailsScreen() {
             {/* 8. REGISTRATION ACTION */}
             <View style={styles.actions}>
               {hasApplied ? (
-                <Button mode="contained" disabled style={styles.actionBtn} buttonColor={C.ink} textColor="#FFFFFF" icon="check-circle">
+                <Button mode="contained" disabled style={styles.actionBtn} contentStyle={styles.actionContent} buttonColor={C.accent} textColor="#FFFFFF" icon="check-circle">
                   Already Registered
                 </Button>
               ) : checkDeadlinePassed() ? (
-                <Button mode="contained" disabled style={styles.actionBtn} buttonColor={C.ink} textColor="#FFFFFF" icon="clock-alert-outline">
+                <Button mode="contained" disabled style={styles.actionBtn} contentStyle={styles.actionContent} buttonColor={C.accent} textColor="#FFFFFF" icon="clock-alert-outline">
                   Deadline Passed
                 </Button>
               ) : (
-                <Button mode="contained" onPress={handleApply} loading={applying} disabled={applying || dismissed} style={styles.actionBtn} buttonColor={C.ink} textColor="#FFFFFF" icon="send">
+                <Button mode="contained" onPress={handleApply} loading={applying} disabled={applying || dismissed} style={styles.actionBtn} contentStyle={styles.actionContent} buttonColor={C.accent} textColor="#FFFFFF" icon="send">
                   Register
                 </Button>
               )}
-              <Button mode="outlined" onPress={handleNotInterested} disabled={dismissed} style={[styles.actionBtn, styles.ghostBtn]} textColor={C.muted}>
+              <Button mode="outlined" onPress={handleNotInterested} disabled={dismissed} style={[styles.actionBtn, styles.ghostBtn]} contentStyle={styles.actionContent} textColor={C.muted}>
                 {dismissed ? 'Hidden' : 'Not Interested'}
               </Button>
             </View>
@@ -302,30 +302,32 @@ export default function JobDetailsScreen() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: C.paper },
+  sheet: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 20 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: C.paper },
   loadingText: { marginTop: 12, fontSize: 12, color: C.muted },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: C.paper, padding: 24 },
   headerBlock: { alignItems: 'center', paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: C.line, gap: 4 },
-  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent },
-  driveTitle: { fontSize: 22, fontWeight: '800', color: C.ink, textAlign: 'center', letterSpacing: -0.8 },
+  eyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', color: C.muted },
+  driveTitle: { fontSize: 22, fontWeight: '700', color: C.ink, textAlign: 'center', letterSpacing: -0.8 },
   driveSubtitle: { fontSize: 13, color: C.muted, textAlign: 'center' },
   headerChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 8 },
   section: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: C.line },
-  sectionHeader: { fontSize: 13, fontWeight: '800', color: C.ink, letterSpacing: 1, marginBottom: 8 },
+  sectionHeader: { fontSize: 12, fontWeight: '600', color: C.muted, letterSpacing: 0.8, marginBottom: 8 },
   sectionBody: { gap: 6 },
   body: { fontSize: 15, color: C.ink, lineHeight: 23 },
   bulletList: { gap: 6 },
-  link: { fontSize: 14, fontWeight: '700', color: C.accent, marginTop: 6 },
+  link: { fontSize: 14, fontWeight: '600', color: C.accent, marginTop: 6, minHeight: 44, textAlignVertical: 'center' },
   pipeline: { gap: 0 },
   step: { flexDirection: 'row', gap: 12 },
   stepRail: { alignItems: 'center', width: 20 },
   dot: { width: 14, height: 14, borderRadius: 7, backgroundColor: C.card, borderWidth: 2, borderColor: C.accent, marginTop: 3 },
-  dotFirst: { backgroundColor: C.amber, borderColor: C.amber },
+  dotFirst: { backgroundColor: C.accent, borderColor: C.accent },
   line: { width: 2, flex: 1, minHeight: 18, backgroundColor: C.line, marginVertical: 2 },
   stepText: { flex: 1, minWidth: 0, flexShrink: 1, paddingBottom: 14 },
-  stepTitle: { fontSize: 15, fontWeight: '800', color: C.ink },
+  stepTitle: { fontSize: 15, fontWeight: '600', color: C.ink },
   stepDate: { fontSize: 13, color: C.muted, marginTop: 2 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingTop: 20 },
-  actionBtn: { flex: 1, minWidth: 160, borderRadius: 14 },
-  ghostBtn: { borderWidth: 1.5, borderColor: C.line, backgroundColor: '#FFFFFF' },
+  actionBtn: { flex: 1, minWidth: 160, borderRadius: 10 },
+  actionContent: { minHeight: 48 },
+  ghostBtn: { borderWidth: 1, borderColor: C.line, backgroundColor: '#FFFFFF' },
 });

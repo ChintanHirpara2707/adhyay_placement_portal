@@ -2,15 +2,13 @@ import React, { useCallback, useState } from 'react';
 import { StyleSheet, View, FlatList, Alert, RefreshControl } from 'react-native';
 import { Text, Button, FAB, Switch } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
 import { Skeleton } from '@/components/SkeletonLoader';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
-import { WebOnlyDecorations } from '@/components/WebOnlyDecorations';
-import { StatusChip, EmptyState } from '@/components/ui/kit';
+import { StatusChip, EmptyState, PageHeader, pageColumn } from '@/components/ui/kit';
 
 interface JobPosting {
   id: string;
@@ -75,17 +73,13 @@ export default function CompanyMyJobsScreen() {
 
   return (
     <View style={styles.container}>
-      <WebOnlyDecorations />
       <TopNavbar title="My Jobs" subtitle="Manage postings" />
-      <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
-        <Text style={styles.eyebrow}>Recruiter Workspace</Text>
-        <Text style={styles.heading}>My Jobs</Text>
-      </MotiView>
+      <PageHeader title="My jobs" subtitle="Manage your postings and review applicants." />
       {loadingJobs ? (
         <View style={styles.listContainer}>
-          <Skeleton height={110} borderRadius={22} style={{ marginBottom: 12 }} />
-          <Skeleton height={110} borderRadius={22} style={{ marginBottom: 12 }} />
-          <Skeleton height={110} borderRadius={22} />
+          <Skeleton height={110} borderRadius={14} style={{ marginBottom: 12 }} />
+          <Skeleton height={110} borderRadius={14} style={{ marginBottom: 12 }} />
+          <Skeleton height={110} borderRadius={14} />
         </View>
       ) : (
         <FlatList
@@ -117,7 +111,7 @@ export default function CompanyMyJobsScreen() {
               title="No postings yet"
               hint="Create your first job posting to start receiving applications."
               action={
-                <Button mode="contained" onPress={() => router.push('/(company)/post-job' as any)} style={styles.postButton} buttonColor={C.ink} textColor="#FFFFFF">
+                <Button mode="contained" onPress={() => router.push('/(company)/post-job' as any)} style={styles.postButton} buttonColor={C.accent} textColor="#FFFFFF">
                   Create Your First Job Posting
                 </Button>
               }
@@ -125,25 +119,23 @@ export default function CompanyMyJobsScreen() {
           }
         />
       )}
-      <FAB icon="plus" style={styles.fab} color="#FFFFFF" onPress={() => router.push('/(company)/post-job' as any)} />
+      <FAB icon="plus" accessibilityLabel="Post a new job" style={styles.fab} color="#FFFFFF" onPress={() => router.push('/(company)/post-job' as any)} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.paper },
-  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent, paddingHorizontal: 16, paddingTop: 16 },
-  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, paddingHorizontal: 16, marginTop: 4 },
-  listContainer: { paddingHorizontal: 16, paddingBottom: 90, gap: 12 },
-  card: { backgroundColor: C.card, borderRadius: 22, borderWidth: 1, borderColor: C.line, padding: 18, gap: 6 },
+  listContainer: { ...pageColumn(720), paddingBottom: 96, gap: 12 },
+  card: { backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 16, gap: 6 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
-  jobTitle: { fontSize: 17, fontWeight: '800', color: C.ink, flex: 1, minWidth: 0, flexShrink: 1, letterSpacing: -0.3 },
+  jobTitle: { fontSize: 16, fontWeight: '600', color: C.ink, flex: 1, minWidth: 0, flexShrink: 1, letterSpacing: -0.3 },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 },
   applicantCount: { fontSize: 13, color: C.muted },
-  boldText: { fontWeight: '800', color: C.ink },
-  dateText: { fontSize: 12, color: C.faint },
+  boldText: { fontWeight: '700', color: C.ink },
+  dateText: { fontSize: 12, color: C.muted },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: C.line },
-  toggleLabel: { fontSize: 13, color: C.muted, fontWeight: '700' },
-  postButton: { borderRadius: 14, marginTop: 12 },
-  fab: { position: 'absolute', margin: 16, right: 0, bottom: 0, backgroundColor: C.ink, borderRadius: 16 },
+  toggleLabel: { fontSize: 13, color: C.muted, fontWeight: '600' },
+  postButton: { borderRadius: 10, marginTop: 12 },
+  fab: { position: 'absolute', margin: 16, right: 0, bottom: 0, backgroundColor: C.accent, borderRadius: 14 },
 });

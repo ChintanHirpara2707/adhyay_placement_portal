@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Button, HelperText, Text, TextInput } from 'react-native-paper';
-import { C } from '@/theme/design';
+import { C, R } from '@/theme/design';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 
 export const Field: React.FC<{
@@ -24,7 +24,7 @@ export const authInputProps = {
   mode: 'outlined' as const,
   outlineColor: C.line,
   activeOutlineColor: C.accent,
-  outlineStyle: { borderRadius: 14, borderWidth: 1.5 },
+  outlineStyle: { borderRadius: 12, borderWidth: 1.5 },
 };
 
 export const AuthPrimaryButton: React.FC<{
@@ -42,7 +42,7 @@ export const AuthPrimaryButton: React.FC<{
       style={styles.btn}
       contentStyle={styles.btnContent}
       labelStyle={styles.btnLabel}
-      buttonColor={C.ink}
+      buttonColor={C.accent}
       textColor="#FFFFFF"
     >
       {title}
@@ -56,10 +56,10 @@ export const authCardStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   field: { marginBottom: 14 },
-  label: { fontSize: 13, fontWeight: '700', color: C.ink, marginBottom: 6 },
+  label: { fontSize: 13, fontWeight: '600', color: C.ink, marginBottom: 6 },
   error: { paddingHorizontal: 0, marginTop: 2 },
   btnWrap: { marginTop: 8 },
-  btn: { borderRadius: 14 },
+  btn: { borderRadius: 12 },
   btnContent: { paddingVertical: 8 },
   btnLabel: { fontSize: 16, fontWeight: '700' },
 });

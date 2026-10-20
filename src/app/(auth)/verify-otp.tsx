@@ -253,9 +253,9 @@ export default function VerifyOtpScreen() {
 }
 
 const styles = StyleSheet.create({
-  sentBanner: { backgroundColor: C.successSoft, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12 },
+  sentBanner: { backgroundColor: C.successSoft, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12 },
   sentText: { color: C.success, fontWeight: '700', fontSize: 13, textAlign: 'center' },
-  otpInput: { letterSpacing: 6, fontSize: 22, fontWeight: '800', textAlign: 'center' },
+  otpInput: { letterSpacing: 6, fontSize: 22, fontWeight: '700', textAlign: 'center' },
   submitError: { color: C.danger, fontSize: 13, textAlign: 'center', marginBottom: 8 },
   footer: { marginTop: 20, alignItems: 'center', gap: 8 },
   muted: { fontSize: 14, color: C.muted },

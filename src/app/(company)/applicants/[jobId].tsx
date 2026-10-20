@@ -2,11 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, FlatList, Alert, Linking } from 'react-native';
 import { Text, Button, ActivityIndicator } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
-import { StatusChip, statusToneFor, EmptyState } from '@/components/ui/kit';
+import { StatusChip, statusToneFor, EmptyState, PageHeader, FilterChips, pageColumn } from '@/components/ui/kit';
 
 interface Applicant {
   id: string;
@@ -160,18 +159,15 @@ export default function JobApplicantsScreen() {
   return (
     <View style={styles.container}>
       <TopNavbar title="Applicants" subtitle={jobTitle || 'Job applicants'} showBack />
-      <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
-        <Text style={styles.eyebrow}>Candidates</Text>
-        <Text style={styles.heading} numberOfLines={2}>{jobTitle || 'Job Position'}</Text>
-        <Text style={styles.countText}>Total Candidates: {visible.length}</Text>
-      </MotiView>
-      <View style={styles.chips}>
-        {(['all', 'applied', 'shortlisted', 'rejected'] as const).map((f) => (
-          <Text key={f} onPress={() => setFilter(f)} style={[styles.chip, filter === f && styles.chipActive]}>
-            {f[0].toUpperCase() + f.slice(1)}
-          </Text>
-        ))}
-      </View>
+      <PageHeader title={jobTitle || 'Job position'} subtitle={`${visible.length} ${visible.length === 1 ? 'candidate' : 'candidates'}`} />
+      <FilterChips
+        value={filter}
+        onChange={setFilter}
+        options={(['all', 'applied', 'shortlisted', 'rejected'] as const).map((f) => ({
+          value: f,
+          label: f[0].toUpperCase() + f.slice(1),
+        }))}
+      />
 
       <FlatList
         data={visible}
@@ -210,7 +206,7 @@ export default function JobApplicantsScreen() {
                       compact
                       onPress={() => handleShortlist(item)}
                       style={styles.shortlistBtn}
-                      buttonColor={C.ink}
+                      buttonColor={C.accent}
                       textColor="#FFFFFF"
                     >
                       Shortlist
@@ -266,25 +262,18 @@ const styles = StyleSheet.create({
     color: C.muted,
     fontSize: 14,
   },
-  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent, paddingHorizontal: 16, paddingTop: 16 },
-  heading: { fontSize: 26, fontWeight: '800', color: C.ink, letterSpacing: -0.8, paddingHorizontal: 16, marginTop: 4 },
-  countText: {
-    color: C.muted,
-    marginTop: 4,
-    fontSize: 12,
-    paddingHorizontal: 16,
-  },
   listContainer: {
-    paddingHorizontal: 16,
+    ...pageColumn(720),
     paddingBottom: 24,
+    paddingTop: 4,
     gap: 12,
   },
   card: {
     backgroundColor: C.card,
-    borderRadius: 22,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: C.line,
-    padding: 18,
+    padding: 16,
     gap: 6,
   },
   nameRow: {
@@ -294,8 +283,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   nameText: {
-    fontSize: 17,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '600',
     color: C.ink,
     flex: 1,
     minWidth: 0,
@@ -322,8 +311,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   resumeBtn: {
-    borderRadius: 14,
-    borderColor: C.accent,
+    borderRadius: 10,
+    borderColor: C.line,
   },
   decisionButtons: {
     flexDirection: 'row',
@@ -331,33 +320,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   shortlistBtn: {
-    borderRadius: 14,
+    borderRadius: 10,
   },
   rejectBtn: {
-    borderRadius: 14,
-    borderColor: C.danger,
-  },
-  chips: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    flexWrap: 'wrap',
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1.5,
+    borderRadius: 10,
     borderColor: C.line,
-    backgroundColor: C.card,
-    color: C.muted,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  chipActive: {
-    backgroundColor: C.ink,
-    borderColor: C.ink,
-    color: '#FFFFFF',
   },
 });

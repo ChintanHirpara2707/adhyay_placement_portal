@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, ScrollView, Alert } from 'react-native';
 import { Text, Button, ActivityIndicator, Searchbar } from 'react-native-paper';
-import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
 import { DataTable } from '@/components/ui/DataTable';
-import { StatusChip, EmptyState } from '@/components/ui/kit';
+import { StatusChip, EmptyState, PageHeader, pageColumn } from '@/components/ui/kit';
 import { formatCTC, formatDeadline } from '@/lib/format';
 
 interface JobPosting {
@@ -110,13 +109,9 @@ export default function JobsScreen() {
   return (
     <View style={styles.container}>
       <TopNavbar title="All Jobs" subtitle="Moderate postings" />
-      <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
-        <Text style={styles.eyebrow}>Chapter 02 · Drives</Text>
-        <Text style={styles.heading}>All postings</Text>
-        <Text style={styles.count}>{filtered.length} total</Text>
-      </MotiView>
+      <PageHeader title="All postings" subtitle={`${filtered.length} ${filtered.length === 1 ? 'posting' : 'postings'}`} maxWidth={1000} />
       <View style={styles.searchWrap}>
-        <Searchbar placeholder="Search title or company" value={query} onChangeText={setQuery} style={styles.search} inputStyle={styles.searchInput} />
+        <Searchbar placeholder="Search title or company" value={query} onChangeText={setQuery} style={styles.search} inputStyle={styles.searchInput} iconColor={C.muted} placeholderTextColor={C.muted} accessibilityLabel="Search postings" />
       </View>
       <ScrollView contentContainerStyle={styles.listContainer}>
         <DataTable
@@ -192,29 +187,28 @@ const styles = StyleSheet.create({
     color: C.muted,
     fontSize: 14,
   },
-  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent, paddingHorizontal: 16, paddingTop: 16 },
-  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, paddingHorizontal: 16, marginTop: 4 },
-  count: { fontSize: 13, color: C.muted, paddingHorizontal: 16, marginTop: 4 },
   listContainer: {
-    paddingHorizontal: 16,
+    ...pageColumn(1000),
     paddingBottom: 24,
+    paddingTop: 4,
     gap: 12,
   },
   searchWrap: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    ...pageColumn(1000),
+    paddingTop: 8,
   },
   search: {
-    backgroundColor: C.card,
+    backgroundColor: C.surface,
     borderWidth: 1,
     borderColor: C.line,
-    borderRadius: 14,
+    borderRadius: 12,
     elevation: 0,
+    minHeight: 48,
   },
   searchInput: { fontSize: 16 },
   jobTitle: {
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '600',
     color: C.ink,
   },
   companyName: {
@@ -227,8 +221,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   closeBtn: {
-    borderRadius: 14,
-    borderColor: C.danger,
+    borderRadius: 10,
+    borderColor: C.line,
     alignSelf: 'flex-start',
   },
 });

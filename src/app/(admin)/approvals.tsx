@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, FlatList, Alert } from 'react-native';
 import { Text, Button, ActivityIndicator } from 'react-native-paper';
-import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
-import { EmptyState } from '@/components/ui/kit';
+import { EmptyState, PageHeader, pageColumn } from '@/components/ui/kit';
 
 interface PendingCompany {
   id: string;
@@ -104,11 +103,10 @@ export default function ApprovalsScreen() {
   return (
     <View style={styles.container}>
       <TopNavbar title="Approvals" subtitle="Pending companies" />
-      <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
-        <Text style={styles.eyebrow}>Chapter 01 · Review</Text>
-        <Text style={styles.heading}>Company approvals</Text>
-        <Text style={styles.count}>{companies.length} awaiting decision</Text>
-      </MotiView>
+      <PageHeader
+        title="Company approvals"
+        subtitle={`${companies.length} ${companies.length === 1 ? 'company awaits' : 'companies await'} a decision`}
+      />
       <FlatList
         data={companies}
         keyExtractor={(item) => item.id}
@@ -140,7 +138,8 @@ export default function ApprovalsScreen() {
                 mode="contained"
                 onPress={() => handleApprove(item.id)}
                 style={styles.actionBtn}
-                buttonColor={C.ink}
+                contentStyle={styles.btnContent}
+                buttonColor={C.accent}
                 textColor="#FFFFFF"
                 icon="check"
               >
@@ -150,6 +149,7 @@ export default function ApprovalsScreen() {
                 mode="outlined"
                 onPress={() => handleReject(item.id)}
                 style={styles.rejectBtn}
+                contentStyle={styles.btnContent}
                 textColor={C.danger}
                 icon="close"
               >
@@ -187,29 +187,27 @@ const styles = StyleSheet.create({
     color: C.muted,
     fontSize: 14,
   },
-  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent, paddingHorizontal: 16, paddingTop: 16 },
-  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, paddingHorizontal: 16, marginTop: 4 },
-  count: { fontSize: 13, color: C.muted, paddingHorizontal: 16, marginTop: 4 },
   listContainer: {
-    paddingHorizontal: 16,
+    ...pageColumn(720),
     paddingBottom: 24,
+    paddingTop: 4,
     gap: 12,
   },
   card: {
     backgroundColor: C.card,
-    borderRadius: 22,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: C.line,
-    padding: 18,
+    padding: 16,
     gap: 10,
   },
   headerInfo: {
     gap: 2,
   },
   companyName: {
-    fontWeight: '800',
-    fontSize: 18,
-    letterSpacing: -0.4,
+    fontWeight: '600',
+    fontSize: 17,
+    letterSpacing: -0.2,
     color: C.ink,
   },
   emailText: {
@@ -240,13 +238,13 @@ const styles = StyleSheet.create({
   actionBtn: {
     flex: 1,
     minWidth: 140,
-    borderRadius: 14,
+    borderRadius: 10,
   },
+  btnContent: { minHeight: 44 },
   rejectBtn: {
     flex: 1,
     minWidth: 140,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: C.danger,
+    borderRadius: 10,
+    borderColor: C.line,
   },
 });

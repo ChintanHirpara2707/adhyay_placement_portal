@@ -2,15 +2,13 @@ import React, { useState, useCallback } from 'react';
 import { StyleSheet, View, FlatList, Alert, RefreshControl } from 'react-native';
 import { Text, Button } from 'react-native-paper';
 import { useFocusEffect } from 'expo-router';
-import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
 import { Skeleton } from '@/components/SkeletonLoader';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
-import { WebOnlyDecorations } from '@/components/WebOnlyDecorations';
-import { EmptyState } from '@/components/ui/kit';
+import { EmptyState, PageHeader, pageColumn } from '@/components/ui/kit';
 
 interface Notification {
   id: string;
@@ -134,22 +132,18 @@ export default function NotificationsScreen() {
 
   return (
     <View style={styles.container}>
-      <WebOnlyDecorations />
       <TopNavbar title="Notifications" subtitle={`${notifications.filter((n) => !n.read).length} unread`} />
-      <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
-        <Text style={styles.eyebrow}>Inbox</Text>
-        <Text style={styles.heading}>Notifications</Text>
-      </MotiView>
+      <PageHeader title="Notifications" subtitle="Updates about your applications and drives." />
       <View style={styles.actionRow}>
-        <Button mode="text" textColor={C.accent} labelStyle={styles.actionLabel} onPress={markAllAsRead}>
+        <Button mode="text" textColor={C.accent} labelStyle={styles.actionLabel} contentStyle={{ minHeight: 44 }} onPress={markAllAsRead}>
           Mark all as read
         </Button>
       </View>
       {loading ? (
         <View style={styles.listContainer}>
-          <Skeleton height={70} borderRadius={18} style={{ marginBottom: 10 }} />
-          <Skeleton height={70} borderRadius={18} style={{ marginBottom: 10 }} />
-          <Skeleton height={70} borderRadius={18} style={{ marginBottom: 10 }} />
+          <Skeleton height={70} borderRadius={14} style={{ marginBottom: 10 }} />
+          <Skeleton height={70} borderRadius={14} style={{ marginBottom: 10 }} />
+          <Skeleton height={70} borderRadius={14} style={{ marginBottom: 10 }} />
         </View>
       ) : notifications.length === 0 ? (
         <EmptyState icon="bell-off-outline" title="All caught up" hint="You have no notifications at this time." />
@@ -187,25 +181,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: C.paper,
   },
-  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent, paddingHorizontal: 16, paddingTop: 16 },
-  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, paddingHorizontal: 16, marginTop: 4 },
-  listContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-    gap: 10,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 8,
-  },
-  actionLabel: { fontSize: 13, fontWeight: '700' },
+  listContainer: { ...pageColumn(720), paddingBottom: 24, gap: 10 },
+  actionRow: { ...pageColumn(720), flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 8 },
+  actionLabel: { fontSize: 13, fontWeight: '600' },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
-    color: C.ink,
+    color: C.muted,
     marginTop: 8,
     marginBottom: 6,
   },
@@ -216,7 +200,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: C.card,
-    borderRadius: 18,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: C.line,
     marginBottom: 10,
@@ -225,7 +209,7 @@ const styles = StyleSheet.create({
   },
   unreadCard: {
     backgroundColor: C.accentSoft,
-    borderColor: C.accent,
+    borderColor: C.line,
   },
   titleContainer: {
     flexDirection: 'row',
@@ -248,7 +232,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   unreadMessage: {
-    fontWeight: '700',
+    fontWeight: '600',
     color: C.ink,
   },
   readMessage: {
@@ -257,7 +241,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 12,
-    color: C.faint,
+    color: C.muted,
     marginTop: 4,
   },
 });

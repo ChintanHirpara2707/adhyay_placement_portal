@@ -5,7 +5,6 @@ import { useRouter } from "expo-router";
 import { MotiView } from "moti";
 import { useEffect } from "react";
 import {
-  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -16,40 +15,8 @@ import {
 import { ActivityIndicator, Text } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
-
-/* ------------------------------------------------------------------ */
-/* Design tokens                                                       */
-/* ------------------------------------------------------------------ */
-const C = {
-  ink: "#0B1020",
-  inkSoft: "#1F2640",
-  paper: "#F7F5F0",
-  card: "#FFFFFF",
-  line: "#E7E3DA",
-  muted: "#5B6272",
-  faint: "#9AA0AE",
-  accent: "#1F5BFF",
-  accentSoft: "#E8EEFF",
-  amber: "#F5B544",
-  success: "#12A150",
-};
-
-const LOGO_RATIO = 259 / 217; // logo width / height
-
-const shadow = (y: number, blur: number, opacity: number) =>
-  Platform.select({
-    ios: {
-      shadowColor: "#0B1020",
-      shadowOffset: { width: 0, height: y },
-      shadowOpacity: opacity,
-      shadowRadius: blur,
-    },
-    android: { elevation: Math.max(1, Math.round(y / 2)) },
-    web: {
-      boxShadow: `0px ${y}px ${blur}px rgba(11, 16, 32, ${opacity})`,
-    } as any,
-    default: {},
-  });
+import { Brand } from "@/components/ui/Brand";
+import { C, R, shadow } from "@/theme/design";
 
 /* ------------------------------------------------------------------ */
 /* Content                                                             */
@@ -89,19 +56,6 @@ const PIPELINE: { label: string; meta: string; state: StepState }[] = [
 /* ------------------------------------------------------------------ */
 /* Pieces                                                              */
 /* ------------------------------------------------------------------ */
-function Brand({ size = 40 }: { size?: number }) {
-  return (
-    <View style={styles.brand}>
-      <Image
-        source={require("../../assets/images/logo.png")}
-        style={{ height: size, width: size * LOGO_RATIO }}
-        resizeMode="contain"
-      />
-      <Text style={styles.brandText}>Adhyay</Text>
-    </View>
-  );
-}
-
 function PipelineCard({ compact }: { compact: boolean }) {
   const pad = compact ? 16 : 22;
   return (
@@ -174,7 +128,7 @@ function PipelineCard({ compact }: { compact: boolean }) {
                 <Text
                   style={[
                     styles.stepLabel,
-                    step.state === "pending" && { color: C.faint },
+                    step.state === "pending" && { color: C.muted },
                   ]}
                 >
                   {step.label}
@@ -211,10 +165,6 @@ function LandingPage() {
 
   return (
     <View style={styles.container}>
-      {/* Ambient shapes */}
-      <View style={styles.ambientTop} />
-      <View style={styles.ambientBottom} />
-
       {/* NAV: brand + the single "existing user" action */}
       <View
         style={[
@@ -223,11 +173,13 @@ function LandingPage() {
         ]}
       >
         <View style={[styles.navInner, { height: isMobile ? 60 : 72 }]}>
-          <Brand size={isMobile ? 32 : 40} />
+          <Brand size={isMobile ? 30 : 36} />
           <TouchableOpacity
-            activeOpacity={0.8}
+            activeOpacity={0.7}
             onPress={goLogin}
             style={styles.navSignIn}
+            accessibilityRole="button"
+            accessibilityLabel="Sign in"
           >
             <MaterialCommunityIcons
               name="login-variant"
@@ -272,7 +224,7 @@ function LandingPage() {
               !isDesktop && { alignItems: "center" },
             ]}
           >
-            <View style={styles.heroBadge}>
+            <View style={[styles.heroBadge, isDesktop && { alignSelf: "flex-start" }]}>
               <View style={styles.badgeDot} />
               <Text style={styles.heroBadgeText} numberOfLines={1}>
                 Campus Recruitment Management
@@ -283,9 +235,9 @@ function LandingPage() {
               style={[
                 styles.mainTitle,
                 {
-                  fontSize: isSmall ? 36 : isMobile ? 44 : isTablet ? 62 : 72,
-                  lineHeight: isSmall ? 42 : isMobile ? 50 : isTablet ? 68 : 78,
-                  letterSpacing: isMobile ? -1.5 : -2.5,
+                  fontSize: isSmall ? 34 : isMobile ? 40 : isTablet ? 54 : 64,
+                  lineHeight: isSmall ? 40 : isMobile ? 46 : isTablet ? 60 : 70,
+                  letterSpacing: isMobile ? -1 : -1.8,
                   textAlign: isDesktop ? "left" : "center",
                 },
               ]}
@@ -314,6 +266,7 @@ function LandingPage() {
               activeOpacity={0.85}
               style={[styles.btnInk, isMobile && styles.btnFull]}
               onPress={goSignup}
+              accessibilityRole="button"
             >
               <Text style={styles.btnInkText}>Create Account</Text>
               <MaterialCommunityIcons
@@ -355,7 +308,7 @@ function LandingPage() {
                 },
                 i !== STATS.length - 1 && {
                   borderRightWidth: 1,
-                  borderRightColor: C.inkSoft,
+                  borderRightColor: C.line,
                 },
               ]}
             >
@@ -371,8 +324,8 @@ function LandingPage() {
                 style={[
                   styles.statLabel,
                   {
-                    fontSize: isMobile ? 9.5 : 12,
-                    letterSpacing: isMobile ? 0.6 : 1.2,
+                    fontSize: isMobile ? 11 : 12,
+                    letterSpacing: isMobile ? 0.4 : 0.8,
                   },
                 ]}
               >
@@ -480,7 +433,6 @@ function LandingPage() {
               { padding: isSmall ? 24 : isMobile ? 28 : isTablet ? 48 : 64 },
             ]}
           >
-            <View style={styles.ctaGlow} />
             <Text style={styles.ctaEyebrow}>NEXT CHAPTER</Text>
             <Text
               style={[
@@ -503,7 +455,7 @@ function LandingPage() {
               <Text style={styles.btnPrimaryText}>Create Account</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity activeOpacity={0.7} onPress={goLogin}>
+            <TouchableOpacity activeOpacity={0.7} onPress={goLogin} style={styles.ctaLink} accessibilityRole="link">
               <Text style={styles.ctaLinkText}>
                 Already have an account?{" "}
                 <Text style={styles.ctaLinkStrong}>Sign In</Text>
@@ -522,7 +474,7 @@ function LandingPage() {
             },
           ]}
         >
-          <Brand size={26} />
+          <Brand size={24} />
           <Text style={styles.footerText}>
             © Adhyay • Developed for excellence.
           </Text>
@@ -588,26 +540,6 @@ const styles = StyleSheet.create({
   },
   loadingText: { fontSize: 14, color: C.muted, fontWeight: "500" },
 
-  /* Ambient */
-  ambientTop: {
-    position: "absolute",
-    top: -220,
-    right: -160,
-    width: 520,
-    height: 520,
-    borderRadius: 260,
-    backgroundColor: "rgba(31, 91, 255, 0.07)",
-  },
-  ambientBottom: {
-    position: "absolute",
-    bottom: -240,
-    left: -180,
-    width: 480,
-    height: 480,
-    borderRadius: 240,
-    backgroundColor: "rgba(245, 181, 68, 0.10)",
-  },
-
   /* Nav */
   nav: {
     backgroundColor: C.paper,
@@ -623,25 +555,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  brand: { flexDirection: "row", alignItems: "center", gap: 10 },
-  brandText: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: C.ink,
-    letterSpacing: -0.5,
-  },
   navSignIn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     paddingVertical: 9,
     paddingHorizontal: 16,
-    borderRadius: 999,
-    borderWidth: 1.5,
+    borderRadius: R.button,
+    minHeight: 44,
+    borderWidth: 1,
     borderColor: C.line,
     backgroundColor: C.card,
   },
-  navSignInText: { fontSize: 14, fontWeight: "700", color: C.ink },
+  navSignInText: { fontSize: 14, fontWeight: "600", color: C.ink },
 
   /* Layout */
   scroll: { flex: 1 },
@@ -682,21 +608,21 @@ const styles = StyleSheet.create({
     letterSpacing: 0.7,
     textTransform: "uppercase",
   },
-  mainTitle: { fontWeight: "800", color: C.ink },
+  mainTitle: { fontWeight: "700", color: C.ink },
   titleAccent: { color: C.accent },
   subTitle: { color: C.muted },
   btnFull: { width: "100%" },
   btnInk: {
-    backgroundColor: C.ink,
-    paddingVertical: 16,
+    backgroundColor: C.accent,
+    minHeight: 52,
+    paddingVertical: 14,
     paddingHorizontal: 32,
-    borderRadius: 14,
+    borderRadius: R.button,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
     marginTop: 6,
-    ...shadow(8, 20, 0.18),
   },
   btnInkText: { fontSize: 16, fontWeight: "700", color: "#fff" },
 
@@ -704,11 +630,11 @@ const styles = StyleSheet.create({
   pipelineCard: {
     width: "100%",
     backgroundColor: C.card,
-    borderRadius: 26,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: C.line,
     overflow: "hidden",
-    ...shadow(20, 40, 0.1),
+    ...shadow(2, 8, 0.05),
   },
   pipelineHeader: {
     flexDirection: "row",
@@ -716,14 +642,14 @@ const styles = StyleSheet.create({
     gap: 12,
     borderBottomWidth: 1,
     borderBottomColor: C.line,
-    backgroundColor: "#FBFAF7",
+    backgroundColor: C.surface,
   },
   pipelineHeaderText: { flex: 1, minWidth: 0 },
   pipelineKicker: {
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 1,
-    color: C.faint,
+    color: C.muted,
   },
   pipelineTitle: {
     fontSize: 15,
@@ -735,7 +661,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#E7F6EE",
+    backgroundColor: C.successSoft,
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 999,
@@ -748,7 +674,7 @@ const styles = StyleSheet.create({
   },
   liveText: {
     fontSize: 11,
-    fontWeight: "800",
+    fontWeight: "700",
     color: C.success,
     letterSpacing: 0.8,
   },
@@ -779,17 +705,18 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   stepText: { flex: 1, paddingTop: 2 },
-  stepLabel: { fontSize: 15, fontWeight: "700", color: C.ink },
+  stepLabel: { fontSize: 15, fontWeight: "600", color: C.ink },
   stepMeta: { fontSize: 13, color: C.muted, marginTop: 2 },
 
   /* Stats */
   statsBand: {
     width: "100%",
     flexDirection: "row",
-    backgroundColor: C.ink,
-    borderRadius: 24,
+    backgroundColor: C.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: C.line,
     overflow: "hidden",
-    ...shadow(14, 36, 0.14),
   },
   statItem: {
     flex: 1,
@@ -798,14 +725,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   statValue: {
-    fontWeight: "800",
-    color: "#FFFFFF",
+    fontWeight: "700",
+    color: C.ink,
     letterSpacing: -0.5,
     textAlign: "center",
   },
   statLabel: {
-    fontWeight: "700",
-    color: C.amber,
+    fontWeight: "600",
+    color: C.muted,
     textTransform: "uppercase",
     textAlign: "center",
   },
@@ -815,14 +742,14 @@ const styles = StyleSheet.create({
   sectionHeaderWrap: { alignItems: "center", gap: 10 },
   eyebrow: {
     fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 1.6,
-    color: C.accent,
+    fontWeight: "600",
+    letterSpacing: 1,
+    color: C.muted,
   },
   sectionTitle: {
-    fontWeight: "800",
+    fontWeight: "700",
     color: C.ink,
-    letterSpacing: -1,
+    letterSpacing: -0.6,
     textAlign: "center",
   },
   sectionSub: {
@@ -838,9 +765,8 @@ const styles = StyleSheet.create({
     backgroundColor: C.card,
     borderWidth: 1,
     borderColor: C.line,
-    borderRadius: 22,
+    borderRadius: 14,
     gap: 24,
-    ...shadow(6, 20, 0.04),
   },
   featureTop: {
     flexDirection: "row",
@@ -850,21 +776,21 @@ const styles = StyleSheet.create({
   featureIconWrap: {
     width: 52,
     height: 52,
-    borderRadius: 16,
+    borderRadius: 14,
     backgroundColor: C.accentSoft,
     alignItems: "center",
     justifyContent: "center",
   },
   featureNumber: {
     fontSize: 40,
-    fontWeight: "800",
-    color: "#EAE6DC",
-    letterSpacing: -2,
+    fontWeight: "700",
+    color: C.line,
+    letterSpacing: -0.6,
   },
   featureTextWrap: { gap: 8 },
   featureTitle: {
     fontSize: 19,
-    fontWeight: "800",
+    fontWeight: "700",
     color: C.ink,
     letterSpacing: -0.3,
   },
@@ -876,7 +802,7 @@ const styles = StyleSheet.create({
     backgroundColor: C.card,
     borderWidth: 1,
     borderColor: C.line,
-    borderRadius: 22,
+    borderRadius: 14,
     paddingVertical: 22,
     overflow: "hidden",
   },
@@ -885,12 +811,13 @@ const styles = StyleSheet.create({
   ctaSection: { width: "100%" },
   ctaCard: {
     width: "100%",
-    backgroundColor: C.ink,
-    borderRadius: 28,
+    backgroundColor: C.surface,
+    borderWidth: 1,
+    borderColor: C.line,
+    borderRadius: 14,
     alignItems: "center",
     gap: 16,
     overflow: "hidden",
-    ...shadow(18, 38, 0.18),
   },
   ctaGlow: {
     position: "absolute",
@@ -903,38 +830,39 @@ const styles = StyleSheet.create({
   },
   ctaEyebrow: {
     fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 1.6,
-    color: C.amber,
+    fontWeight: "600",
+    letterSpacing: 1,
+    color: C.muted,
   },
   ctaTitle: {
-    fontWeight: "800",
-    color: "#FFFFFF",
-    letterSpacing: -1,
+    fontWeight: "700",
+    color: C.ink,
+    letterSpacing: -0.6,
     textAlign: "center",
   },
   ctaDesc: {
     fontSize: 16,
-    color: "#A7AEC0",
+    color: C.muted,
     textAlign: "center",
     lineHeight: 25,
     maxWidth: 500,
     marginBottom: 6,
   },
   btnPrimary: {
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 16,
+    backgroundColor: C.accent,
+    minHeight: 52,
+    paddingVertical: 14,
     paddingHorizontal: 40,
-    borderRadius: 14,
+    borderRadius: R.button,
     alignItems: "center",
     justifyContent: "center",
   },
-  btnPrimaryText: { fontSize: 16, fontWeight: "700", color: C.ink },
-  ctaLinkText: { fontSize: 14, color: "#A7AEC0", textAlign: "center" },
+  btnPrimaryText: { fontSize: 16, fontWeight: "600", color: "#FFFFFF" },
+  ctaLink: { minHeight: 44, justifyContent: "center" },
+  ctaLinkText: { fontSize: 14, color: C.muted, textAlign: "center" },
   ctaLinkStrong: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    textDecorationLine: "underline",
+    color: C.accent,
+    fontWeight: "600",
   },
 
   /* Footer */
@@ -946,5 +874,5 @@ const styles = StyleSheet.create({
     borderTopColor: C.line,
     width: "100%",
   },
-  footerText: { fontSize: 14, color: C.faint, fontWeight: "500" },
+  footerText: { fontSize: 14, color: C.muted, fontWeight: "500" },
 });

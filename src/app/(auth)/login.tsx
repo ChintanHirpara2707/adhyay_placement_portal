@@ -8,7 +8,6 @@ import { MotiView } from "moti";
 import React, { useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,39 +18,8 @@ import {
 import { Button, HelperText, Text, TextInput } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { z } from "zod";
-
-/* ------------------------------------------------------------------ */
-/* Design tokens (same as the landing page)                            */
-/* ------------------------------------------------------------------ */
-const C = {
-  ink: "#0B1020",
-  inkSoft: "#1F2640",
-  paper: "#F7F5F0",
-  card: "#FFFFFF",
-  line: "#E7E3DA",
-  muted: "#5B6272",
-  faint: "#9AA0AE",
-  accent: "#1F5BFF",
-  accentSoft: "#E8EEFF",
-  amber: "#F5B544",
-};
-
-const LOGO_RATIO = 259 / 217; // logo width / height
-
-const shadow = (y: number, blur: number, opacity: number) =>
-  Platform.select({
-    ios: {
-      shadowColor: "#0B1020",
-      shadowOffset: { width: 0, height: y },
-      shadowOpacity: opacity,
-      shadowRadius: blur,
-    },
-    android: { elevation: Math.max(1, Math.round(y / 2)) },
-    web: {
-      boxShadow: `0px ${y}px ${blur}px rgba(11, 16, 32, ${opacity})`,
-    } as any,
-    default: {},
-  });
+import { Brand } from "@/components/ui/Brand";
+import { C, R, shadow } from "@/theme/design";
 
 const PERKS = [
   {
@@ -107,22 +75,6 @@ const loginResolver = (data: LoginFormData) => {
 /* ------------------------------------------------------------------ */
 /* Small pieces                                                        */
 /* ------------------------------------------------------------------ */
-function Brand({ size, light = false }: { size: number; light?: boolean }) {
-  return (
-    <View style={styles.brand}>
-      <Image
-        // Path assumes this file is at src/app/(auth)/login.tsx. Adjust if yours differs.
-        source={require("../../../assets/images/logo.png")}
-        style={{ height: size, width: size * LOGO_RATIO }}
-        resizeMode="contain"
-      />
-      <Text style={[styles.brandText, light && { color: "#FFFFFF" }]}>
-        Adhyay
-      </Text>
-    </View>
-  );
-}
-
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -278,15 +230,14 @@ export default function LoginScreen() {
       {/* Brand panel: desktop only */}
       {isDesktop && (
         <View style={styles.sidePanel}>
-          <View style={styles.sideGlow} />
-          <Brand size={48} light />
+          <Brand size={44} />
           <View style={styles.sideCenter}>
             <Text style={styles.sideEyebrow}>
               CAMPUS RECRUITMENT MANAGEMENT
             </Text>
             <Text style={styles.sideTitle}>
               Start your{"\n"}
-              <Text style={{ color: C.amber }}>chapter.</Text>
+              <Text style={{ color: C.accent }}>chapter.</Text>
             </Text>
             <View style={styles.perkList}>
               {PERKS.map((perk) => (
@@ -295,7 +246,7 @@ export default function LoginScreen() {
                     <MaterialCommunityIcons
                       name={perk.icon}
                       size={20}
-                      color="#FFFFFF"
+                      color={C.accent}
                     />
                   </View>
                   <Text style={styles.perkText}>{perk.text}</Text>
@@ -311,12 +262,6 @@ export default function LoginScreen() {
 
       {/* Form side */}
       <View style={styles.formSide}>
-        {!isDesktop && (
-          <>
-            <View style={styles.ambientTop} />
-            <View style={styles.ambientBottom} />
-          </>
-        )}
         <ScrollView
           contentContainerStyle={[
             styles.scrollContainer,
@@ -374,7 +319,7 @@ export default function LoginScreen() {
                       placeholder="e.g. john@university.edu"
                       outlineColor={C.line}
                       activeOutlineColor={C.accent}
-                      outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
+                      outlineStyle={{ borderRadius: R.input, borderWidth: 1 }}
                       left={
                         <TextInput.Icon icon="email-outline" color={C.faint} />
                       }
@@ -410,7 +355,7 @@ export default function LoginScreen() {
                       placeholder="Enter your password"
                       outlineColor={C.line}
                       activeOutlineColor={C.accent}
-                      outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
+                      outlineStyle={{ borderRadius: R.input, borderWidth: 1 }}
                       left={
                         <TextInput.Icon icon="lock-outline" color={C.faint} />
                       }
@@ -455,7 +400,7 @@ export default function LoginScreen() {
                   style={styles.button}
                   contentStyle={styles.buttonContent}
                   labelStyle={styles.buttonLabel}
-                  buttonColor={C.ink}
+                  buttonColor={C.accent}
                   textColor="#FFFFFF"
                 >
                   Sign In
@@ -492,79 +437,45 @@ const styles = StyleSheet.create({
     backgroundColor: C.paper,
   },
 
-  /* Brand */
-  brand: { flexDirection: "row", alignItems: "center", gap: 10 },
-  brandText: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: C.ink,
-    letterSpacing: -0.5,
-  },
-
   /* Desktop side panel */
   sidePanel: {
     flex: 1,
-    backgroundColor: C.ink,
+    backgroundColor: C.surface,
+    borderRightWidth: 1,
+    borderRightColor: C.line,
     padding: 56,
     justifyContent: "space-between",
     overflow: "hidden",
   },
-  sideGlow: {
-    position: "absolute",
-    top: -180,
-    right: -140,
-    width: 460,
-    height: 460,
-    borderRadius: 230,
-    backgroundColor: "rgba(31, 91, 255, 0.35)",
-  },
   sideCenter: { gap: 24, maxWidth: 520 },
   sideEyebrow: {
     fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 1.6,
-    color: C.amber,
+    fontWeight: "600",
+    letterSpacing: 1,
+    color: C.muted,
   },
   sideTitle: {
-    fontSize: 64,
-    lineHeight: 70,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    letterSpacing: -2.5,
+    fontSize: 52,
+    lineHeight: 58,
+    fontWeight: "700",
+    color: C.ink,
+    letterSpacing: -1,
   },
   perkList: { gap: 16, marginTop: 8 },
   perkRow: { flexDirection: "row", alignItems: "center", gap: 14 },
   perkIcon: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    backgroundColor: C.inkSoft,
+    borderRadius: 10,
+    backgroundColor: C.accentSoft,
     alignItems: "center",
     justifyContent: "center",
   },
-  perkText: { flex: 1, fontSize: 15, color: "#C6CBDA", lineHeight: 22 },
-  sideFooter: { fontSize: 13, color: "#7C849A" },
+  perkText: { flex: 1, fontSize: 15, color: C.inkSoft, lineHeight: 22 },
+  sideFooter: { fontSize: 13, color: C.muted },
 
   /* Form side */
   formSide: { flex: 1, backgroundColor: C.paper, overflow: "hidden" },
-  ambientTop: {
-    position: "absolute",
-    top: -200,
-    right: -150,
-    width: 440,
-    height: 440,
-    borderRadius: 220,
-    backgroundColor: "rgba(31, 91, 255, 0.07)",
-  },
-  ambientBottom: {
-    position: "absolute",
-    bottom: -220,
-    left: -160,
-    width: 420,
-    height: 420,
-    borderRadius: 210,
-    backgroundColor: "rgba(245, 181, 68, 0.10)",
-  },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: "center",
@@ -578,10 +489,10 @@ const styles = StyleSheet.create({
   card: {
     width: "100%",
     backgroundColor: C.card,
-    borderRadius: 26,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: C.line,
-    ...shadow(16, 36, 0.08),
+    ...shadow(1, 4, 0.04),
   },
   header: {
     marginBottom: 24,
@@ -589,7 +500,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   title: {
-    fontWeight: "800",
+    fontWeight: "700",
     color: C.ink,
     letterSpacing: -0.8,
     textAlign: "center",
@@ -603,7 +514,7 @@ const styles = StyleSheet.create({
   inputContainer: { marginBottom: 14 },
   inputLabel: {
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
     color: C.ink,
     marginBottom: 6,
   },
@@ -621,8 +532,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   buttonWrapper: { marginTop: 12 },
-  button: { borderRadius: 14 },
-  buttonContent: { paddingVertical: 8 },
+  button: { borderRadius: R.button },
+  buttonContent: { paddingVertical: 8, minHeight: 48 },
   buttonLabel: { fontSize: 16, fontWeight: "700" },
   divider: {
     height: 1,
@@ -640,12 +551,12 @@ const styles = StyleSheet.create({
   },
   linkText: {
     color: C.accent,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   mobileFooter: {
     marginTop: 20,
     fontSize: 13,
-    color: C.faint,
+    color: C.muted,
     textAlign: "center",
   },
 });

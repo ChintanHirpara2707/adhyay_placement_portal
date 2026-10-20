@@ -1,8 +1,9 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { DefaultTheme, ThemeProvider } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { Stack } from 'expo-router';
-import { PaperProvider, MD3DarkTheme, MD3LightTheme } from 'react-native-paper';
+import { PaperProvider } from 'react-native-paper';
 import { useEffect } from 'react';
 import { useFonts } from 'expo-font';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -40,7 +41,6 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
 }
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   const [fontsLoaded] = useFonts({
     ...MaterialCommunityIcons.font,
     MaterialCommunityIcons: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
@@ -117,6 +117,7 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={whiteNavTheme}>
       <PaperProvider theme={customPaperTheme}>
+        <StatusBar style="dark" />
         <AnimatedSplashOverlay />
         <Stack
           screenOptions={{

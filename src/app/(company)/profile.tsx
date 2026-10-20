@@ -3,7 +3,6 @@ import { StyleSheet, View, KeyboardAvoidingView, Platform, Alert } from 'react-n
 import { TextInput, Button, Text, ActivityIndicator } from 'react-native-paper';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
-import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { C } from '@/theme/design';
@@ -91,11 +90,11 @@ export default function CompanyProfileScreen() {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
       <TopNavbar title="Profile" subtitle="Company details" />
       <Screen>
-        <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
-          <Text style={styles.eyebrow}>Recruiter Workspace</Text>
+        <View style={styles.column}>
           <Text style={styles.heading}>Company profile</Text>
-        </MotiView>
-        <Card>
+          <Text style={styles.sub}>How students and the placement cell see your company.</Text>
+        </View>
+        <Card style={styles.column}>
           <View style={styles.avatarRow}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{getInitials(null, user?.email).charAt(0)}</Text>
@@ -136,7 +135,7 @@ export default function CompanyProfileScreen() {
               </View>
             )}
           />
-          <Button mode="contained" loading={saving} disabled={!isDirty || saving} onPress={handleSubmit(onSave)} buttonColor={C.ink} textColor="#FFFFFF" style={styles.save} contentStyle={styles.saveContent} labelStyle={styles.saveLabel}>
+          <Button mode="contained" loading={saving} disabled={!isDirty || saving} onPress={handleSubmit(onSave)} buttonColor={C.accent} textColor="#FFFFFF" style={styles.save} contentStyle={styles.saveContent} labelStyle={styles.saveLabel}>
             Save Changes
           </Button>
         </Card>
@@ -148,18 +147,19 @@ export default function CompanyProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.paper },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: C.paper },
-  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent },
-  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, marginTop: 4 },
+  column: { width: '100%', maxWidth: 640, alignSelf: 'center' },
+  heading: { fontSize: 26, fontWeight: '700', color: C.ink, letterSpacing: -0.5 },
+  sub: { fontSize: 15, color: C.muted, marginTop: 2 },
   avatarRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  avatar: { width: 60, height: 60, borderRadius: 30, backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#FFFFFF', fontWeight: '800', fontSize: 24 },
-  hint: { fontSize: 12, color: C.muted, marginBottom: 8 },
+  avatar: { width: 60, height: 60, borderRadius: 30, backgroundColor: C.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: C.accentStrong, fontWeight: '700', fontSize: 24 },
+  hint: { fontSize: 13, color: C.muted, marginBottom: 8 },
   field: { marginTop: 8 },
-  label: { fontSize: 13, fontWeight: '700', color: C.ink, marginBottom: 6 },
+  label: { fontSize: 13, fontWeight: '600', color: C.ink, marginBottom: 6 },
   input: { backgroundColor: C.card, fontSize: 16 },
-  outline: { borderRadius: 14, borderWidth: 1.5 },
+  outline: { borderRadius: 10, borderWidth: 1 },
   errorText: { color: C.danger, fontSize: 12, marginTop: 2 },
-  save: { borderRadius: 14, marginTop: 12 },
-  saveContent: { paddingVertical: 8 },
-  saveLabel: { fontSize: 16, fontWeight: '700' },
+  save: { borderRadius: 10, marginTop: 16 },
+  saveContent: { paddingVertical: 8, minHeight: 48 },
+  saveLabel: { fontSize: 16, fontWeight: '600' },
 });

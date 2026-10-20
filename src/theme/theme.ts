@@ -1,5 +1,5 @@
 import { MD3LightTheme } from 'react-native-paper';
-import { C } from './design';
+import { C, R } from './design';
 
 export const Theme = {
   colors: {
@@ -7,8 +7,9 @@ export const Theme = {
     card: C.card,
     cardBackground: C.card,
     surface: C.card,
-    primary: C.ink, // deep ink: primary buttons, headings
+    primary: C.accent, // primary actions
     primaryAccent: C.accent, // links, active states, highlights
+    surfaceMuted: C.surface,
     primaryText: C.ink,
     textPrimary: C.ink,
     secondaryText: C.muted,
@@ -20,13 +21,13 @@ export const Theme = {
     borderLight: C.line,
 
     // Buttons
-    buttonDisabledBg: '#E5E7EB',
-    buttonDisabledText: '#9CA3AF',
+    buttonDisabledBg: C.soft,
+    buttonDisabledText: C.faint,
 
     // Status Pills
     status: {
       applied: {
-        bg: '#EEF0F4',
+        bg: C.soft,
         text: C.muted,
       },
       round_cleared: {
@@ -103,18 +104,18 @@ export const Theme = {
     elementGap: 12,
   },
   borderRadius: {
-    button: 8,
-    card: 12,
-    input: 8,
-    pill: 999,
+    button: R.button,
+    card: R.card,
+    input: R.input,
+    pill: R.pill,
     sm: 6,
-    md: 8,
-    lg: 12,
+    md: R.button,
+    lg: R.card,
     xl: 16,
   },
   shadows: {
     subtle: {
-      shadowColor: '#000000',
+      shadowColor: C.ink,
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.05,
       shadowRadius: 2,
@@ -129,18 +130,22 @@ export const customPaperTheme = {
   colors: {
     ...MD3LightTheme.colors,
     primary: C.accent,
+    primaryContainer: C.accentSoft,
+    onPrimaryContainer: C.accentStrong,
+    secondaryContainer: C.accentSoft,
+    onSecondaryContainer: C.accentStrong,
     onPrimary: '#FFFFFF',
     background: C.paper,
     surface: C.card,
     onSurface: C.ink,
-    surfaceVariant: C.paper,
+    surfaceVariant: C.surface,
     onSurfaceVariant: C.muted,
     outline: C.line,
     error: C.danger,
     elevation: {
       level0: 'transparent',
       level1: '#FFFFFF',
-      level2: '#F9FAFB',
+      level2: '#FFFFFF',
       level3: '#FFFFFF',
       level4: '#FFFFFF',
       level5: '#FFFFFF',

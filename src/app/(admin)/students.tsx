@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, ScrollView, Alert } from 'react-native';
 import { Text, TextInput, ActivityIndicator } from 'react-native-paper';
-import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
 import { DataTable } from '@/components/ui/DataTable';
-import { StatusChip, EmptyState } from '@/components/ui/kit';
+import { StatusChip, EmptyState, PageHeader, pageColumn } from '@/components/ui/kit';
 
 interface Student {
   id: string;
@@ -87,11 +86,7 @@ export default function StudentsScreen() {
   return (
     <View style={styles.container}>
       <TopNavbar title="Students" subtitle="Directory & placement" />
-      <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
-        <Text style={styles.eyebrow}>Chapter 03 · Talent</Text>
-        <Text style={styles.heading}>Students</Text>
-        <Text style={styles.count}>{filteredStudents.length} in directory</Text>
-      </MotiView>
+      <PageHeader title="Students" subtitle={`${filteredStudents.length} ${filteredStudents.length === 1 ? 'student' : 'students'} registered`} maxWidth={1000} />
       <View style={styles.searchBarContainer}>
         <TextInput
           placeholder="Search by name or branch"
@@ -102,7 +97,7 @@ export default function StudentsScreen() {
           style={styles.searchBar}
           outlineColor={C.line}
           activeOutlineColor={C.accent}
-          outlineStyle={{ borderRadius: 14, borderWidth: 1.5 }}
+          outlineStyle={{ borderRadius: 10, borderWidth: 1 }}
         />
       </View>
 
@@ -169,38 +164,37 @@ const styles = StyleSheet.create({
     color: C.muted,
     fontSize: 14,
   },
-  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent, paddingHorizontal: 16, paddingTop: 16 },
-  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, paddingHorizontal: 16, marginTop: 4 },
-  count: { fontSize: 13, color: C.muted, paddingHorizontal: 16, marginTop: 4 },
   searchBarContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    ...pageColumn(1000),
+    paddingTop: 8,
+    paddingBottom: 4,
   },
   searchBar: {
     backgroundColor: C.card,
     fontSize: 16,
   },
   listContainer: {
-    paddingHorizontal: 16,
+    ...pageColumn(1000),
     paddingBottom: 24,
+    paddingTop: 8,
     gap: 12,
   },
   studentName: {
-    fontWeight: '800',
+    fontWeight: '600',
     fontSize: 15,
     color: C.ink,
   },
   emailText: {
     color: C.muted,
-    fontSize: 12,
+    fontSize: 13,
   },
   branchText: {
-    color: C.accent,
-    fontWeight: '700',
+    color: C.inkSoft,
+    fontWeight: '600',
     fontSize: 14,
   },
   boldValue: {
-    fontWeight: '800',
+    fontWeight: '600',
     color: C.ink,
     fontSize: 15,
   },

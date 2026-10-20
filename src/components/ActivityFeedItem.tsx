@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Theme } from '@/theme/theme';
+import { C } from '@/theme/design';
 import { timeAgo } from '@/lib/format';
 
 interface ActivityFeedItemProps {
@@ -44,7 +45,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Theme.colors.borderLight,
   },
-  unreadRow: { backgroundColor: '#F8FAFC', borderRadius: 8, paddingHorizontal: 8 },
+  unreadRow: { backgroundColor: C.surface, borderRadius: 8, paddingHorizontal: 8 },
   iconWrap: {
     width: 34,
     height: 34,
@@ -53,9 +54,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   body: { flex: 1, gap: 2 },
-  message: { fontSize: 13, color: Theme.colors.primaryText, lineHeight: 18 },
+  message: { fontSize: 14, color: Theme.colors.primaryText, lineHeight: 20 },
   unreadMessage: { fontWeight: '600' },
-  time: { fontSize: 11, color: Theme.colors.secondaryText },
+  time: { fontSize: 12, color: Theme.colors.secondaryText },
   dot: {
     width: 8,
     height: 8,

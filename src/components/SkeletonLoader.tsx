@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { MotiView } from 'moti';
 import { Theme } from '@/theme/theme';
+import { C } from '@/theme/design';
 
 interface SkeletonProps {
   width?: number | string;
@@ -58,7 +59,7 @@ export const JobCardSkeleton: React.FC = () => {
 
 const styles = StyleSheet.create({
   skeleton: {
-    backgroundColor: '#E2E8F0',
+    backgroundColor: C.line,
   },
   cardContainer: {
     backgroundColor: Theme.colors.surface,

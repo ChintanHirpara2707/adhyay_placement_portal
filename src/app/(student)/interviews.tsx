@@ -2,13 +2,12 @@ import React, { useCallback, useState } from 'react';
 import { StyleSheet, View, FlatList, Alert, RefreshControl } from 'react-native';
 import { Text, SegmentedButtons } from 'react-native-paper';
 import { useFocusEffect } from 'expo-router';
-import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
 import { JobCardSkeleton } from '@/components/SkeletonLoader';
-import { StatusChip } from '@/components/ui/kit';
+import { StatusChip, PageHeader, pageColumn } from '@/components/ui/kit';
 import { EmptyState } from '@/components/ui/kit';
 import { formatDateTime } from '@/lib/format';
 
@@ -107,10 +106,7 @@ export default function StudentInterviewsScreen() {
   return (
     <View style={styles.container}>
       <TopNavbar title="Interviews" subtitle="Schedule & rounds" />
-      <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
-        <Text style={styles.eyebrow}>Your Stages</Text>
-        <Text style={styles.heading}>Interviews</Text>
-      </MotiView>
+      <PageHeader title="Interviews" subtitle="Your scheduled rounds and results." />
       <View style={styles.toggleWrap}>
         <SegmentedButtons
           value={tab}
@@ -163,16 +159,14 @@ export default function StudentInterviewsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.paper },
-  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent, paddingHorizontal: 16, paddingTop: 16 },
-  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, paddingHorizontal: 16, marginTop: 4 },
-  toggleWrap: { paddingHorizontal: 16, paddingTop: 12 },
-  list: { paddingHorizontal: 16, paddingBottom: 24, gap: 12 },
-  card: { backgroundColor: C.card, borderRadius: 22, borderWidth: 1, borderColor: C.line, padding: 18, gap: 4 },
+  toggleWrap: { ...pageColumn(720), paddingTop: 8, paddingBottom: 12 },
+  list: { ...pageColumn(720), paddingBottom: 24, gap: 12 },
+  card: { backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 16, gap: 4 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  round: { fontSize: 17, fontWeight: '800', color: C.ink, letterSpacing: -0.3 },
-  progress: { fontSize: 12, fontWeight: '800', color: C.teal },
-  job: { fontSize: 15, fontWeight: '700', color: C.ink },
+  round: { fontSize: 16, fontWeight: '600', color: C.ink, letterSpacing: -0.3 },
+  progress: { fontSize: 12, fontWeight: '600', color: C.teal },
+  job: { fontSize: 15, fontWeight: '600', color: C.ink },
   company: { fontSize: 13, color: C.muted },
-  date: { fontSize: 13, color: C.accent, fontWeight: '700' },
+  date: { fontSize: 13, color: C.accentStrong, fontWeight: '600' },
   notes: { fontSize: 13, color: C.muted, marginTop: 4, lineHeight: 20 },
 });

@@ -4,6 +4,7 @@ import { Text } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { BarChart } from 'react-native-chart-kit';
 import { MotiView } from 'moti';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { supabase } from '@/lib/supabase';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
@@ -11,7 +12,6 @@ import { Screen } from '@/components/ui/Screen';
 import { Card, SectionHeader, StatCard, EmptyState, ResponsiveGrid } from '@/components/ui/kit';
 import { ActivityFeedItem } from '@/components/ActivityFeedItem';
 import { Skeleton } from '@/components/SkeletonLoader';
-import { WebOnlyDecorations } from '@/components/WebOnlyDecorations';
 
 export default function AdminDashboardScreen() {
   const router = useRouter();
@@ -98,47 +98,53 @@ export default function AdminDashboardScreen() {
 
   return (
     <View style={styles.shell}>
-      <WebOnlyDecorations />
       <TopNavbar title="Dashboard" subtitle="Admin analytics" />
       {loading ? (
         <Screen>
           <ResponsiveGrid>
-            <Skeleton height={130} borderRadius={24} />
-            <Skeleton height={130} borderRadius={24} />
-            <Skeleton height={130} borderRadius={24} />
-            <Skeleton height={130} borderRadius={24} />
+            <Skeleton height={130} borderRadius={14} />
+            <Skeleton height={130} borderRadius={14} />
+            <Skeleton height={130} borderRadius={14} />
+            <Skeleton height={130} borderRadius={14} />
           </ResponsiveGrid>
-          <Skeleton height={240} borderRadius={24} />
+          <Skeleton height={240} borderRadius={14} />
         </Screen>
       ) : (
         <Screen>
           <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
-            <Text style={styles.eyebrow}>Placement Cell</Text>
             <Text style={styles.heading}>Overview</Text>
           </MotiView>
 
           <ResponsiveGrid>
-            <StatCard index="01" label="Students" value={totalStudents} icon="account-multiple" tone="accent" />
-            <StatCard index="02" label="Companies" value={totalCompanies} icon="domain" tone="accent" />
-            <StatCard index="03" label="Placement" value={`${placementPct.toFixed(1)}%`} icon="chart-bar" tone="success" />
-            <StatCard index="04" label="Avg CTC" value={`${avgCtc.toFixed(1)} LPA`} icon="cash" tone="warning" />
+            <StatCard label="Students" value={totalStudents} icon="account-multiple" tone="accent" />
+            <StatCard label="Companies" value={totalCompanies} icon="domain" tone="accent" />
+            <StatCard label="Placement" value={`${placementPct.toFixed(1)}%`} icon="chart-bar" tone="success" />
+            <StatCard label="Avg CTC" value={`${avgCtc.toFixed(1)} LPA`} icon="cash" tone="warning" />
           </ResponsiveGrid>
 
-          <TouchableOpacity activeOpacity={0.85} onPress={() => router.push('/(admin)/approvals' as any)}>
-            <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 350, delay: 120 }}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.push('/(admin)/approvals' as any)}
+            accessibilityRole="button"
+            accessibilityLabel={`${pendingCount} companies pending approval. Review now.`}
+          >
+            <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: 100 }}>
               <View style={styles.pendingCard}>
-                <View>
-                  <Text style={styles.pendingEyebrow}>Action Needed</Text>
-                  <Text style={styles.pendingTitle}>{pendingCount} companies pending approval</Text>
+                <View style={styles.pendingIcon}>
+                  <MaterialCommunityIcons name="clock-alert-outline" size={20} color={C.warning} />
                 </View>
-                <Text style={styles.pendingLink}>Review now →</Text>
+                <View style={styles.pendingText}>
+                  <Text style={styles.pendingTitle}>{pendingCount} {pendingCount === 1 ? 'company' : 'companies'} pending approval</Text>
+                  <Text style={styles.pendingSub}>Review registrations to let them post drives.</Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={22} color={C.muted} />
               </View>
             </MotiView>
           </TouchableOpacity>
 
           <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400, delay: 180 }}>
             <Card>
-              <SectionHeader eyebrow="Analytics" title="Branch-wise Placements" />
+              <SectionHeader title="Branch-wise placements" />
               <BarChart
                 data={{ labels: branchLabels, datasets: [{ data: branchValues }] }}
                 width={Math.min(screenWidth - 64, 560)}
@@ -150,8 +156,8 @@ export default function AdminDashboardScreen() {
                   backgroundGradientFrom: C.card,
                   backgroundGradientTo: C.card,
                   decimalPlaces: 0,
-                  color: (o = 1) => `rgba(31, 91, 255, ${o})`,
-                  labelColor: (o = 1) => `rgba(91, 98, 114, ${o})`,
+                  color: (o = 1) => `rgba(37, 99, 235, ${o})`,
+                  labelColor: (o = 1) => `rgba(107, 114, 128, ${o})`,
                   barPercentage: 0.6,
                 }}
                 style={styles.chart}
@@ -160,10 +166,16 @@ export default function AdminDashboardScreen() {
           </MotiView>
 
           <SectionHeader
-            eyebrow="Feed"
-            title="Recent Activity"
+            title="Recent activity"
             action={
-              <Text style={styles.link} onPress={() => router.push('/(admin)/broadcast' as any)}>Broadcast</Text>
+              <TouchableOpacity
+                style={styles.linkBtn}
+                onPress={() => router.push('/(admin)/broadcast' as any)}
+                accessibilityRole="button"
+                accessibilityLabel="Send a broadcast"
+              >
+                <Text style={styles.link}>Broadcast</Text>
+              </TouchableOpacity>
             }
           />
           <Card>
@@ -181,12 +193,13 @@ export default function AdminDashboardScreen() {
 
 const styles = StyleSheet.create({
   shell: { flex: 1, backgroundColor: C.paper },
-  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent },
-  heading: { fontSize: 30, fontWeight: '800', color: C.ink, letterSpacing: -1.2, marginTop: 4 },
-  pendingCard: { backgroundColor: C.ink, borderRadius: 24, padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, overflow: 'hidden' },
-  pendingEyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.amber },
-  pendingTitle: { fontWeight: '800', fontSize: 17, color: '#FFFFFF', letterSpacing: -0.4, marginTop: 4 },
-  pendingLink: { color: '#FFFFFF', fontWeight: '800', fontSize: 14, flexShrink: 0 },
-  chart: { borderRadius: 16, alignSelf: 'center', marginTop: 8 },
-  link: { color: C.accent, fontWeight: '700', fontSize: 14 },
+  heading: { fontSize: 26, fontWeight: '700', color: C.ink, letterSpacing: -0.5 },
+  pendingCard: { backgroundColor: C.warningSoft, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  pendingIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' },
+  pendingText: { flex: 1, minWidth: 0 },
+  pendingTitle: { fontWeight: '600', fontSize: 15, color: C.ink },
+  pendingSub: { fontSize: 13, color: C.muted, marginTop: 2 },
+  chart: { borderRadius: 14, alignSelf: 'center', marginTop: 8 },
+  linkBtn: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
+  link: { color: C.accent, fontWeight: '600', fontSize: 14 },
 });

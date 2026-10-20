@@ -3,14 +3,12 @@ import { StyleSheet, View, FlatList, Alert, RefreshControl } from 'react-native'
 import { Text, Button } from 'react-native-paper';
 import { Skeleton } from '@/components/SkeletonLoader';
 import { useFocusEffect } from 'expo-router';
-import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
-import { WebOnlyDecorations } from '@/components/WebOnlyDecorations';
-import { EmptyState } from '@/components/ui/kit';
+import { EmptyState, PageHeader, pageColumn } from '@/components/ui/kit';
 
 interface Notification {
   id: string;
@@ -106,21 +104,17 @@ export default function AdminNotificationsScreen() {
 
   return (
     <View style={styles.container}>
-      <WebOnlyDecorations />
       <TopNavbar title="Notifications" subtitle={`${notifications.filter((n) => !n.read).length} unread`} />
-      <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
-        <Text style={styles.eyebrow}>Inbox</Text>
-        <Text style={styles.heading}>Notifications</Text>
-      </MotiView>
+      <PageHeader title="Notifications" subtitle="Updates about your applications and drives." />
       <View style={styles.actionRow}>
-        <Button mode="text" textColor={C.accent} labelStyle={styles.actionLabel} onPress={markAllAsRead}>
+        <Button mode="text" textColor={C.accent} labelStyle={styles.actionLabel} contentStyle={{ minHeight: 44 }} onPress={markAllAsRead}>
           Mark all as read
         </Button>
       </View>
       {loading ? (
         <View style={styles.listContainer}>
-          <Skeleton height={70} borderRadius={18} style={{ marginBottom: 10 }} />
-          <Skeleton height={70} borderRadius={18} style={{ marginBottom: 10 }} />
+          <Skeleton height={70} borderRadius={14} style={{ marginBottom: 10 }} />
+          <Skeleton height={70} borderRadius={14} style={{ marginBottom: 10 }} />
         </View>
       ) : notifications.length === 0 ? (
         <EmptyState icon="bell-off-outline" title="All caught up" hint="You have no notifications at this time." />
@@ -148,19 +142,17 @@ export default function AdminNotificationsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.paper },
-  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent, paddingHorizontal: 16, paddingTop: 16 },
-  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, paddingHorizontal: 16, marginTop: 4 },
-  listContainer: { paddingHorizontal: 16, paddingBottom: 24, gap: 10 },
-  actionRow: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 8 },
-  actionLabel: { fontSize: 13, fontWeight: '700' },
-  sectionTitle: { fontSize: 13, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', color: C.ink, marginTop: 8, marginBottom: 6 },
+  listContainer: { ...pageColumn(720), paddingBottom: 24, gap: 10 },
+  actionRow: { ...pageColumn(720), flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 8 },
+  actionLabel: { fontSize: 13, fontWeight: '600' },
+  sectionTitle: { fontSize: 13, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', color: C.muted, marginTop: 8, marginBottom: 6 },
   sectionEmpty: { fontSize: 12, color: C.muted, marginBottom: 8 },
-  card: { backgroundColor: C.card, borderRadius: 18, borderWidth: 1, borderColor: C.line, marginBottom: 10, padding: 14, gap: 4 },
+  card: { backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.line, marginBottom: 10, padding: 14, gap: 4 },
   unreadCard: { backgroundColor: C.accentSoft, borderColor: C.accent },
   titleContainer: { flexDirection: 'row', alignItems: 'flex-start', flex: 1 },
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.accent, marginRight: 8, marginTop: 6 },
   messageText: { fontSize: 15, flex: 1, minWidth: 0, flexShrink: 1, lineHeight: 22 },
   unreadMessage: { fontWeight: '700', color: C.ink },
   readMessage: { fontWeight: '400', color: C.muted },
-  dateText: { fontSize: 12, color: C.faint, marginTop: 4 },
+  dateText: { fontSize: 12, color: C.muted, marginTop: 4 },
 });

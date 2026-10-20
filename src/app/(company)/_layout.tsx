@@ -4,14 +4,14 @@ import { ActivityIndicator } from 'react-native-paper';
 import { AnimatedTabIcon } from '@/components/AnimatedTabIcon';
 import { useAuthStore } from '@/store/authStore';
 import { useRoleGuard } from '@/hooks/useRoleGuard';
-import { View, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View } from 'react-native';
+import { useTabBarOptions } from '@/components/ui/useTabBarOptions';
 import { C } from '@/theme/design';
 
 export default function CompanyLayout() {
   const router = useRouter();
   const { session, role, loading } = useAuthStore();
-  const insets = useSafeAreaInsets();
+  const tabBarOptions = useTabBarOptions();
   useRoleGuard('company');
 
   useEffect(() => {
@@ -29,24 +29,7 @@ export default function CompanyLayout() {
   }
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: C.accent,
-        tabBarInactiveTintColor: C.faint,
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 1,
-          borderTopColor: C.line,
-          elevation: 0,
-          shadowOpacity: 0,
-          height: 62 + (Platform.OS === 'web' ? 0 : insets.bottom),
-          paddingBottom: 8 + (Platform.OS === 'web' ? 0 : insets.bottom),
-          paddingTop: 6,
-        },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
-        headerShown: false,
-      }}
-    >
+    <Tabs screenOptions={tabBarOptions}>
       <Tabs.Screen
         name="dashboard"
         options={{
@@ -63,7 +46,7 @@ export default function CompanyLayout() {
           title: 'My Jobs',
           tabBarLabel: 'My Jobs',
           tabBarIcon: ({ color, size, focused }) => (
-            <AnimatedTabIcon name="briefcase" color={color} size={size} focused={focused} />
+            <AnimatedTabIcon name="briefcase-outline" color={color} size={size} focused={focused} />
           ),
         }}
       />

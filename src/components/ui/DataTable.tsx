@@ -63,12 +63,12 @@ export function DataTable<T extends { id?: string }>({
 
 const styles = StyleSheet.create({
   stack: { gap: 10 },
-  card: { backgroundColor: C.card, borderRadius: 18, borderWidth: 1, borderColor: C.line, padding: 14, gap: 8 },
+  card: { backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 14, gap: 8 },
   pair: { gap: 2 },
-  label: { fontSize: 11, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase', color: C.faint },
+  label: { fontSize: 11, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', color: C.muted },
   value: { minWidth: 0, flexShrink: 1 },
-  table: { borderWidth: 1, borderColor: C.line, borderRadius: 18, overflow: 'hidden', backgroundColor: C.card },
-  headRow: { flexDirection: 'row', backgroundColor: C.ink, paddingHorizontal: 14, paddingVertical: 10, gap: 10 },
-  headCell: { fontSize: 11, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase', color: C.amber },
+  table: { borderWidth: 1, borderColor: C.line, borderRadius: 14, overflow: 'hidden', backgroundColor: C.card },
+  headRow: { flexDirection: 'row', backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.line, paddingHorizontal: 14, paddingVertical: 10, gap: 10 },
+  headCell: { fontSize: 11, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', color: C.muted },
   bodyRow: { flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 12, gap: 10, borderTopWidth: 1, borderTopColor: C.line, alignItems: 'center' },
 });

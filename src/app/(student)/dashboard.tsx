@@ -5,7 +5,8 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { C } from '@/theme/design';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { C, R } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
 import { Screen } from '@/components/ui/Screen';
 import { Card, SectionHeader, StatCard, StatusChip, EmptyState } from '@/components/ui/kit';
@@ -142,46 +143,55 @@ export default function StudentDashboard() {
       <Screen
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadAll(true)} tintColor={C.accent} />}
       >
-        <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 500 }}>
-          <Text style={styles.eyebrow}>Student Workspace</Text>
+        <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300 }}>
           <Text style={styles.greeting}>Welcome back{fullName ? `, ${fullName.split(' ')[0]}` : ''}</Text>
           <Text style={styles.sub}>Here is your placement snapshot.</Text>
         </MotiView>
 
-        <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 500, delay: 100 }}>
+        <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: 60 }}>
           <View style={styles.hero}>
-            <View style={styles.glow} />
-            <Text style={styles.heroEyebrow}>Next Chapter</Text>
             {completion < 100 ? (
-              <TouchableOpacity activeOpacity={0.85} onPress={() => router.push('/(student)/profile' as any)}>
-                <Text style={styles.heroTitle}>Profile {completion}% complete</Text>
-                <ProgressBar progress={completion / 100} color={C.amber} style={styles.bar} />
-                <Text style={styles.heroHint}>Add CGPA, branch, skills and resume to unlock jobs. Tap to complete now →</Text>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => router.push('/(student)/profile' as any)}
+                accessibilityRole="button"
+                accessibilityLabel={`Profile ${completion} percent complete. Open profile to complete it.`}
+              >
+                <View style={styles.heroRow}>
+                  <Text style={styles.heroTitle}>Profile {completion}% complete</Text>
+                  <MaterialCommunityIcons name="chevron-right" size={22} color={C.muted} />
+                </View>
+                <ProgressBar progress={completion / 100} color={C.accent} style={styles.bar} />
+                <Text style={styles.heroHint}>Add CGPA, branch, skills and resume to unlock jobs.</Text>
               </TouchableOpacity>
             ) : (
               <>
-                <Text style={styles.heroTitle}>{recommended.length} drives match you</Text>
+                <Text style={styles.heroTitle}>{recommended.length} {recommended.length === 1 ? 'drive matches' : 'drives match'} you</Text>
                 <Text style={styles.heroHint}>Your profile is complete. Keep applying before deadlines.</Text>
               </>
             )}
           </View>
         </MotiView>
 
-        <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 500, delay: 180 }}>
+        <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: 120 }}>
           <ResponsiveGrid>
-            <StatCard index="01" label="Applications" value={appCount} icon="file-document-outline" tone="accent" />
-            <StatCard index="02" label="Interviews" value={interviewCount} icon="calendar-clock" tone="warning" sub="upcoming" />
-            <StatCard index="03" label="Selected" value={selectedCount} icon="check-decagram" tone="success" sub="offers" />
+            <StatCard label="Applications" value={appCount} icon="file-document-outline" tone="accent" />
+            <StatCard label="Interviews" value={interviewCount} icon="calendar-clock" tone="warning" sub="upcoming" />
+            <StatCard label="Selected" value={selectedCount} icon="check-decagram" tone="success" sub="offers" />
           </ResponsiveGrid>
         </MotiView>
 
-        <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 500, delay: 260 }}>
+        <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: 180 }}>
           <SectionHeader
-            eyebrow="Recommended"
-            title="Jobs for you"
+            title="Recommended jobs"
             action={
-              <TouchableOpacity onPress={() => router.push('/(student)/jobs' as any)}>
-                <Text style={styles.seeAll}>See All</Text>
+              <TouchableOpacity
+                onPress={() => router.push('/(student)/jobs' as any)}
+                style={styles.seeAllBtn}
+                accessibilityRole="link"
+                accessibilityLabel="See all jobs"
+              >
+                <Text style={styles.seeAll}>See all</Text>
               </TouchableOpacity>
             }
           />
@@ -209,8 +219,8 @@ export default function StudentDashboard() {
           )}
         </MotiView>
 
-        <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 500, delay: 340 }}>
-          <SectionHeader eyebrow="Feed" title="Recent Activity" />
+        <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: 240 }}>
+          <SectionHeader title="Recent activity" />
           <Card>
             {activity.length === 0 ? (
               <EmptyState icon="bell-outline" title="No updates yet" hint="New shortlists and interviews will appear here." />
@@ -228,19 +238,18 @@ export default function StudentDashboard() {
 
 const styles = StyleSheet.create({
   shell: { flex: 1, backgroundColor: C.paper },
-  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent },
-  greeting: { fontSize: 30, fontWeight: '800', color: C.ink, letterSpacing: -1.2, marginTop: 4 },
-  sub: { fontSize: 15, color: C.muted, marginTop: 4, lineHeight: 22 },
-  hero: { backgroundColor: C.ink, borderRadius: 24, padding: 22, gap: 8, overflow: 'hidden' },
-  glow: { position: 'absolute', width: 240, height: 240, borderRadius: 120, backgroundColor: C.accent, opacity: 0.25, top: -90, right: -70 },
-  heroEyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.amber },
-  heroTitle: { fontSize: 22, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.6 },
-  heroHint: { fontSize: 14, color: '#C9D1E3', lineHeight: 21 },
-  bar: { height: 8, borderRadius: 4, backgroundColor: C.inkSoft, marginTop: 8 },
-  seeAll: { color: C.accent, fontWeight: '700', fontSize: 14 },
+  greeting: { fontSize: 26, fontWeight: '700', color: C.ink, letterSpacing: -0.5 },
+  sub: { fontSize: 15, color: C.muted, marginTop: 2, lineHeight: 22 },
+  hero: { backgroundColor: C.surface, borderRadius: R.card, borderWidth: 1, borderColor: C.line, padding: 18, gap: 6 },
+  heroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heroTitle: { fontSize: 17, fontWeight: '600', color: C.ink, letterSpacing: -0.2 },
+  heroHint: { fontSize: 14, color: C.muted, lineHeight: 20, marginTop: 6 },
+  bar: { height: 6, borderRadius: 3, backgroundColor: C.line, marginTop: 10 },
+  seeAllBtn: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
+  seeAll: { color: C.accent, fontWeight: '600', fontSize: 14 },
   hScroll: { gap: 12, paddingVertical: 4 },
   recCard: { width: 240, gap: 6 },
-  recTitle: { fontWeight: '800', color: C.ink, fontSize: 16, letterSpacing: -0.3 },
+  recTitle: { fontWeight: '600', color: C.ink, fontSize: 16, letterSpacing: -0.2 },
   recCompany: { fontSize: 13, color: C.muted },
-  recMeta: { fontSize: 12, color: C.muted, fontWeight: '600' },
+  recMeta: { fontSize: 12, color: C.muted, fontWeight: '500' },
 });

@@ -27,7 +27,7 @@ export const Brand: React.FC<{ size?: number; light?: boolean; sub?: string }> =
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   words: { gap: 0 },
-  word: { fontSize: 22, fontWeight: '800', color: C.ink, letterSpacing: -0.8 },
+  word: { fontSize: 22, fontWeight: '700', color: C.ink, letterSpacing: -0.8 },
   wordLight: { color: '#FFFFFF' },
   sub: { fontSize: 11, fontWeight: '700', color: C.muted, letterSpacing: 1.2, textTransform: 'uppercase' },
   subLight: { color: C.amber },

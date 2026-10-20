@@ -6,6 +6,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/lib/supabase';
 import { getInitials } from '@/lib/format';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C, LOGO_RATIO } from '@/theme/design';
 
 interface TopNavbarProps {
@@ -20,6 +21,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   showBack = false,
 }) => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user, role, logout } = useAuthStore();
   const [menuVisible, setMenuVisible] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -101,16 +103,22 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   const rolePill = () => {
     if (role === 'admin') return { label: 'Admin', color: C.accent, bg: C.accentSoft };
     if (role === 'company') return { label: 'Company', color: C.accent, bg: C.accentSoft };
-    if (role === 'student') return { label: 'Student', color: C.success, bg: C.successSoft };
-    return { label: 'Portal', color: C.muted, bg: '#EEF0F4' };
+    if (role === 'student') return { label: 'Student', color: C.accent, bg: C.accentSoft };
+    return { label: 'Portal', color: C.muted, bg: C.soft };
   };
   const pill = rolePill();
 
   return (
-    <View style={styles.bar}>
+    <View style={[styles.bar, { paddingTop: Platform.OS === 'web' ? 0 : insets.top, height: 60 + (Platform.OS === 'web' ? 0 : insets.top) }]}>
       <View style={styles.left}>
         {showBack ? (
-          <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
             <MaterialCommunityIcons name="arrow-left" size={22} color={C.ink} />
           </TouchableOpacity>
         ) : (
@@ -133,7 +141,13 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
       </View>
 
       <View style={styles.right}>
-        <TouchableOpacity style={styles.iconBtn} onPress={goNotifications} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={styles.iconBtn}
+          onPress={goNotifications}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+        >
           <MaterialCommunityIcons name="bell-outline" size={20} color={C.ink} />
           {unreadCount > 0 ? (
             <View style={styles.badge}>
@@ -146,7 +160,13 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           visible={menuVisible}
           onDismiss={() => setMenuVisible(false)}
           anchor={
-            <TouchableOpacity style={styles.avatar} onPress={() => setMenuVisible(true)} activeOpacity={0.7}>
+            <TouchableOpacity
+                style={styles.avatar}
+                onPress={() => setMenuVisible(true)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Open account menu"
+              >
               <Text style={styles.avatarText}>{getInitials(displayName, user?.email)}</Text>
             </TouchableOpacity>
           }
@@ -176,15 +196,15 @@ const styles = StyleSheet.create({
   },
   left: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, flexShrink: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { fontSize: 17, fontWeight: '800', color: C.ink, letterSpacing: -0.4 },
+  title: { fontSize: 17, fontWeight: '700', color: C.ink, letterSpacing: -0.3 },
   subtitle: { fontSize: 11, color: C.muted },
   pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
-  pillText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
+  pillText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
   right: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 },
   iconBtn: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: C.line,
     backgroundColor: C.card,
@@ -199,19 +219,23 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     backgroundColor: C.danger,
+    borderWidth: 1.5,
+    borderColor: C.paper,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
   },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   avatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: C.ink,
+    backgroundColor: C.accentSoft,
+    borderWidth: 1,
+    borderColor: C.line,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  menuContent: { backgroundColor: '#fff', borderRadius: 12, marginTop: 8 },
+  avatarText: { color: C.accentStrong, fontWeight: '700', fontSize: 14 },
+  menuContent: { backgroundColor: '#FFFFFF', borderRadius: 12, marginTop: 8, borderWidth: 1, borderColor: C.line },
 });

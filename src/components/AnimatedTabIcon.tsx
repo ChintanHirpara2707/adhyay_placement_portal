@@ -19,13 +19,11 @@ export const AnimatedTabIcon: React.FC<AnimatedTabIconProps> = ({
   return (
     <MotiView
       animate={{
-        scale: focused ? 1.18 : 1.0,
-        translateY: focused ? -2 : 0,
+        scale: focused ? 1.06 : 1.0,
       }}
       transition={{
-        type: 'spring',
-        damping: 14,
-        stiffness: 220,
+        type: 'timing',
+        duration: 160,
       }}
       style={styles.container}
     >

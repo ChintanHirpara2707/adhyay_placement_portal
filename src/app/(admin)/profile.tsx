@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
-import { MotiView } from 'moti';
 import { useAuthStore } from '@/store/authStore';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
@@ -16,11 +15,11 @@ export default function AdminProfileScreen() {
     <View style={styles.shell}>
       <TopNavbar title="Profile" subtitle="Administrator" />
       <Screen>
-        <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
-          <Text style={styles.eyebrow}>Placement Cell</Text>
+        <View style={styles.column}>
           <Text style={styles.heading}>Admin profile</Text>
-        </MotiView>
-        <Card>
+          <Text style={styles.sub}>Placement cell administrator account.</Text>
+        </View>
+        <Card style={styles.column}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{getInitials('Admin', user?.email)}</Text>
@@ -40,12 +39,13 @@ export default function AdminProfileScreen() {
 
 const styles = StyleSheet.create({
   shell: { flex: 1, backgroundColor: C.paper },
-  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent },
-  heading: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -1, marginTop: 4 },
+  column: { width: '100%', maxWidth: 640, alignSelf: 'center' },
+  heading: { fontSize: 26, fontWeight: '700', color: C.ink, letterSpacing: -0.5 },
+  sub: { fontSize: 15, color: C.muted, marginTop: 2 },
   avatarWrap: { alignItems: 'center', gap: 6, paddingVertical: 12 },
-  avatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#FFFFFF', fontWeight: '800', fontSize: 28 },
-  name: { fontSize: 20, fontWeight: '800', color: C.ink, letterSpacing: -0.5 },
+  avatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: C.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: C.accentStrong, fontWeight: '700', fontSize: 28 },
+  name: { fontSize: 20, fontWeight: '600', color: C.ink, letterSpacing: -0.5 },
   email: { fontSize: 13, color: C.muted },
   hint: { fontSize: 13, color: C.muted, textAlign: 'center', marginTop: 10, lineHeight: 20 },
 });

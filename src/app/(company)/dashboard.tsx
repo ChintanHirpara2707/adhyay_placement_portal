@@ -1,8 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, View, RefreshControl, Alert } from 'react-native';
+import { StyleSheet, View, RefreshControl, Alert, TouchableOpacity } from 'react-native';
 import { Text, Button } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { MotiView } from 'moti';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { C } from '@/theme/design';
@@ -104,11 +105,13 @@ export default function CompanyDashboard() {
         {checking ? (
           <Text style={styles.loading}>Verifying company account…</Text>
         ) : approved === false ? (
-          <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
+          <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300 }}>
             <Card>
               <View style={styles.pendingContent}>
-                <Text style={styles.eyebrowWarn}>Awaiting Review</Text>
-                <Text style={styles.pendingTitle}>Approval Pending</Text>
+                <View style={styles.pendingIcon}>
+                  <MaterialCommunityIcons name="clock-outline" size={24} color={C.warning} />
+                </View>
+                <Text style={styles.pendingTitle}>Approval pending</Text>
                 <Text style={styles.pendingText}>
                   Your company profile is awaiting administrator review. You can post jobs after approval.
                 </Text>
@@ -120,19 +123,19 @@ export default function CompanyDashboard() {
           </MotiView>
         ) : (
           <>
-            <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
-              <Text style={styles.eyebrow}>Recruiter Workspace</Text>
+            <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300 }}>
               <Text style={styles.heading}>{companyName || 'Dashboard'}</Text>
+              <Text style={styles.sub}>Your hiring activity at a glance.</Text>
             </MotiView>
             <ResponsiveGrid>
-              <StatCard index="01" label="Active Jobs" value={activeJobs} icon="briefcase" tone="accent" />
-              <StatCard index="02" label="Applicants" value={totalApplicants} icon="account-multiple" tone="warning" />
-              <StatCard index="03" label="Shortlisted" value={shortlisted} icon="check-decagram" tone="success" />
+              <StatCard label="Active Jobs" value={activeJobs} icon="briefcase-outline" tone="accent" />
+              <StatCard label="Applicants" value={totalApplicants} icon="account-multiple-outline" tone="warning" />
+              <StatCard label="Shortlisted" value={shortlisted} icon="check-decagram" tone="success" />
             </ResponsiveGrid>
             <Button
               mode="contained"
               icon="plus"
-              buttonColor={C.ink}
+              buttonColor={C.accent}
               textColor="#FFFFFF"
               style={styles.postBtn}
               contentStyle={styles.postBtnContent}
@@ -142,10 +145,16 @@ export default function CompanyDashboard() {
               Post New Job
             </Button>
             <SectionHeader
-              eyebrow="Feed"
-              title="Recent Activity"
+              title="Recent activity"
               action={
-                <Text style={styles.link} onPress={() => router.push('/(company)/my-jobs' as any)}>My Jobs</Text>
+                <TouchableOpacity
+                  style={styles.linkBtn}
+                  onPress={() => router.push('/(company)/my-jobs' as any)}
+                  accessibilityRole="link"
+                  accessibilityLabel="Go to my jobs"
+                >
+                  <Text style={styles.link}>My jobs</Text>
+                </TouchableOpacity>
               }
             />
             <Card>
@@ -164,16 +173,17 @@ export default function CompanyDashboard() {
 
 const styles = StyleSheet.create({
   shell: { flex: 1, backgroundColor: C.paper },
-  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.accent },
-  eyebrowWarn: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: C.warning },
-  heading: { fontSize: 30, fontWeight: '800', color: C.ink, letterSpacing: -1.2, marginTop: 4 },
+  heading: { fontSize: 26, fontWeight: '700', color: C.ink, letterSpacing: -0.5 },
+  sub: { fontSize: 15, color: C.muted, marginTop: 2 },
   loading: { textAlign: 'center', color: C.muted, marginTop: 40 },
   pendingContent: { alignItems: 'center', gap: 8, paddingVertical: 8 },
-  pendingTitle: { fontSize: 22, fontWeight: '800', color: C.ink, letterSpacing: -0.6 },
-  pendingText: { fontSize: 15, color: C.muted, textAlign: 'center', lineHeight: 22 },
-  checkBtn: { borderRadius: 14, marginTop: 8 },
-  postBtn: { borderRadius: 14 },
-  postBtnContent: { paddingVertical: 8 },
-  postBtnLabel: { fontSize: 16, fontWeight: '700' },
-  link: { color: C.accent, fontWeight: '700', fontSize: 14 },
+  pendingIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: C.warningSoft, alignItems: 'center', justifyContent: 'center' },
+  pendingTitle: { fontSize: 20, fontWeight: '700', color: C.ink, letterSpacing: -0.3 },
+  pendingText: { fontSize: 15, color: C.muted, textAlign: 'center', lineHeight: 22, maxWidth: 420 },
+  checkBtn: { borderRadius: 10, marginTop: 8, borderColor: C.line },
+  postBtn: { borderRadius: 10 },
+  postBtnContent: { paddingVertical: 8, minHeight: 48 },
+  postBtnLabel: { fontSize: 16, fontWeight: '600' },
+  linkBtn: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
+  link: { color: C.accent, fontWeight: '600', fontSize: 14 },
 });

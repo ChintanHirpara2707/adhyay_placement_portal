@@ -53,8 +53,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ title, subtitle, childre
         {isDesktop ? (
           <View style={styles.split}>
             <View style={styles.panel}>
-              <View style={styles.glow} />
-              <Brand size={44} light sub="Placement Portal" />
+              <Brand size={44} sub="Placement Portal" />
               <Text style={styles.panelTitle}>Start your chapter.</Text>
               <View style={styles.benefits}>
                 {BENEFITS.map((b, i) => (
@@ -65,7 +64,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ title, subtitle, childre
                     transition={{ type: 'timing', duration: 400, delay: 150 + i * 100 }}
                     style={styles.benefit}
                   >
-                    <MaterialCommunityIcons name={b.icon} size={20} color={C.amber} />
+                    <MaterialCommunityIcons name={b.icon} size={20} color={C.accent} />
                     <Text style={styles.benefitText}>{b.text}</Text>
                   </MotiView>
                 ))}
@@ -76,8 +75,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ title, subtitle, childre
           </View>
         ) : (
           <View style={styles.single}>
-            <View style={styles.orbA} />
-            <View style={styles.orbB} />
             <Brand size={isMobile ? 40 : 44} sub="Placement Portal" />
             {form}
           </View>
@@ -95,45 +92,35 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 1020,
     alignSelf: 'center',
-    borderRadius: 28,
+    borderRadius: 18,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: C.line,
     backgroundColor: C.card,
-    ...shadow(16, 36, 0.08),
+    ...shadow(2, 8, 0.05),
   },
   panel: {
     flex: 1,
-    backgroundColor: C.ink,
+    backgroundColor: C.surface,
+    borderRightWidth: 1,
+    borderRightColor: C.line,
     padding: 44,
     gap: 20,
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  glow: {
-    position: 'absolute',
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    backgroundColor: '#1F5BFF',
-    opacity: 0.22,
-    top: -110,
-    right: -110,
-  },
-  panelTitle: { fontSize: 34, fontWeight: '800', color: '#FFFFFF', letterSpacing: -1.2, marginTop: 8 },
+  panelTitle: { fontSize: 32, fontWeight: '700', color: C.ink, letterSpacing: -0.8, marginTop: 8 },
   benefits: { gap: 14, marginTop: 8 },
   benefit: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  benefitText: { fontSize: 15, color: '#E7EAF2', lineHeight: 22, flexShrink: 1 },
-  panelFoot: { fontSize: 11, fontWeight: '800', letterSpacing: 1.6, color: C.amber, marginTop: 12 },
+  benefitText: { fontSize: 15, color: C.inkSoft, lineHeight: 22, flexShrink: 1 },
+  panelFoot: { fontSize: 11, fontWeight: '600', letterSpacing: 1, color: C.muted, marginTop: 12 },
   formSide: { flex: 1, justifyContent: 'center', padding: 12 },
   single: { width: '100%', maxWidth: 460, alignSelf: 'center', alignItems: 'center', gap: 18 },
-  orbA: { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: C.accentSoft, opacity: 0.7, top: -60, left: -70 },
-  orbB: { position: 'absolute', width: 150, height: 150, borderRadius: 75, backgroundColor: C.warningSoft, opacity: 0.6, top: 40, right: -50 },
   cardWrap: { width: '100%' },
   cardWrapMobile: { maxWidth: 460, alignSelf: 'center' },
-  card: { backgroundColor: C.card, borderRadius: 26, borderWidth: 1, borderColor: C.line, ...shadow(16, 36, 0.08) },
-  title: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -0.8, textAlign: 'center' },
+  card: { backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.line, ...shadow(1, 4, 0.04) },
+  title: { fontSize: 26, fontWeight: '700', color: C.ink, letterSpacing: -0.5, textAlign: 'center' },
   subtitle: { fontSize: 15, color: C.muted, textAlign: 'center', marginTop: 6, lineHeight: 22 },
   fields: { marginTop: 20, gap: 2 },
-  foot: { fontSize: 12, color: C.faint, textAlign: 'center', marginTop: 14 },
+  foot: { fontSize: 12, color: C.muted, textAlign: 'center', marginTop: 14 },
 });

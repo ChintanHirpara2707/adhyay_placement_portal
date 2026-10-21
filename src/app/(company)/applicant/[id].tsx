@@ -1,14 +1,15 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { DateField, TimeField } from "@/components/DateField";
+import { formatLongDate, formatTime } from "@/lib/dates";
 import { TopNavbar } from "@/components/TopNavbar";
-import { getInitials } from "@/lib/format";
+import { getInitials, parseDbDate } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/authStore";
 import { C } from "@/theme/design";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-  Alert,
   Linking,
   Platform,
   ScrollView,
@@ -16,6 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { NO_ROWS_MESSAGE, showAlert } from "@/lib/alert";
 import {
   Button,
   Card,
@@ -72,6 +74,9 @@ export default function ApplicantDetailScreen() {
   const [app, setApp] = useState<any>(null);
   const [roundInterviews, setRoundInterviews] = useState<any[]>([]);
   const [marking, setMarking] = useState(false);
+  // Ref guards: state updates are async, so a fast double tap could otherwise fire twice.
+  const schedulingRef = useRef(false);
+  const markingRef = useRef(false);
 
   // Dedicated Date & Slot States
   const [selectedDateStr, setSelectedDateStr] = useState<string>(""); // YYYY-MM-DD
@@ -100,12 +105,12 @@ export default function ApplicantDetailScreen() {
         .maybeSingle();
       if (error) throw error;
       if (!data) {
-        Alert.alert("Not found", "Application not found.");
+        showAlert("Not found", "Application not found.");
         router.back();
         return;
       }
       if ((data as any).job_postings.company_id !== user.id) {
-        Alert.alert("Access denied", "This applicant is not for your job.");
+        showAlert("Access denied", "This applicant is not for your job.");
         router.back();
         return;
       }
@@ -132,7 +137,7 @@ export default function ApplicantDetailScreen() {
         setRoundInterviews((ivs as any[]) ?? []);
       }
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to load applicant.");
+      showAlert("Error", e.message || "Failed to load applicant.");
     } finally {
       setLoading(false);
     }
@@ -165,7 +170,7 @@ export default function ApplicantDetailScreen() {
 
   const handleScheduleInterview = async (form: ScheduleForm) => {
     if (!app || !user) {
-      Alert.alert(
+      showAlert(
         "Not ready",
         "Applicant data is still loading. Please wait and try again.",
       );
@@ -173,7 +178,7 @@ export default function ApplicantDetailScreen() {
     }
     const dt = new Date(form.date_time);
     if (Number.isNaN(dt.getTime())) {
-      Alert.alert(
+      showAlert(
         "Invalid date",
         "Please select both an interview date and time slot.",
       );
@@ -184,56 +189,62 @@ export default function ApplicantDetailScreen() {
       data: { session },
     } = await supabase.auth.getSession();
     if (!session?.user) {
-      Alert.alert(
+      showAlert(
         "Session Expired",
         "Your login session expired. Please log out and sign in again, then retry.",
       );
       return;
     }
+    if (app.status === "rejected" || app.status === "selected") {
+      showAlert("Cannot schedule", `This application is already ${app.status}.`);
+      return;
+    }
+    if (schedulingRef.current) return;
+    schedulingRef.current = true;
     setScheduling(true);
     try {
-      const { error: ivError } = await supabase.from("interviews").insert({
+      const roundNo = form.round_number || currentRound;
+      const existing = roundInterviews.find((iv) => iv.round_number === roundNo);
+      if (existing && existing.result !== "pending") {
+        showAlert("Round already completed", `Round ${roundNo} already has a result (${existing.result}).`);
+        return;
+      }
+      const payload = {
         application_id: app.id,
-        round_number: form.round_number || currentRound,
+        round_number: roundNo,
         date_time: dt.toISOString(),
         mode,
         notes: form.notes || null,
         result: "pending",
-      });
+      };
+      // Rescheduling an existing pending round updates it instead of creating a duplicate row.
+      const { data: saved, error: ivError } = existing
+        ? await supabase.from("interviews").update(payload).eq("id", existing.id).select("id")
+        : await supabase.from("interviews").insert(payload).select("id");
       if (ivError) {
-        Alert.alert(
+        showAlert(
           "Interview Save Failed",
           (ivError as any).message +
-            "\n\nIf this is a permissions error, add the company INSERT policy on the interviews table.",
+            "\n\nIf this is a permissions error, add the company INSERT/UPDATE policy on the interviews table.",
         );
         return;
       }
-
-      // Read-back: prove the row actually persisted and is visible to this user.
-      const { data: verifyRow, error: verifyError } = await supabase
-        .from("interviews")
-        .select("id")
-        .eq("application_id", app.id)
-        .eq("round_number", form.round_number || currentRound)
-        .maybeSingle();
-      if (verifyError || !verifyRow) {
-        Alert.alert(
-          "Verification Failed",
-          "The save did not persist or is not visible (likely RLS). " +
-            (verifyError?.message ?? "Row not found after insert."),
-        );
+      // select() proves the row persisted and is visible to this user.
+      if (!saved || saved.length === 0) {
+        showAlert("Interview not saved", NO_ROWS_MESSAGE);
         return;
       }
 
-      const { error: appError } = await supabase
+      const { data: appRows, error: appError } = await supabase
         .from("applications")
         .update({ status: "interview_scheduled" })
-        .eq("id", app.id);
-      if (appError) {
-        Alert.alert(
+        .eq("id", app.id)
+        .select("id");
+      if (appError || !appRows || appRows.length === 0) {
+        showAlert(
           "Status Update Failed",
           "Interview was saved, but the application status could not be updated: " +
-            appError.message,
+            (appError?.message ?? NO_ROWS_MESSAGE),
         );
         return;
       }
@@ -242,11 +253,11 @@ export default function ApplicantDetailScreen() {
         .from("notifications")
         .insert({
           user_id: app.student_id,
-          message: `Interview scheduled (Round ${form.round_number}) for "${app.job_postings?.title ?? "the role"}" on ${dt.toLocaleString()}. Mode: ${mode}.`,
+          message: `Interview ${existing ? "rescheduled" : "scheduled"} (Round ${roundNo}) for "${app.job_postings?.title ?? "the role"}" on ${dt.toLocaleString()}. Mode: ${mode}.`,
           read: false,
         });
       if (notifError) {
-        Alert.alert(
+        showAlert(
           "Notification Failed",
           "Interview was scheduled, but the student notification could not be sent: " +
             notifError.message +
@@ -255,12 +266,13 @@ export default function ApplicantDetailScreen() {
         return;
       }
 
-      Alert.alert("Scheduled", "Interview scheduled and student notified.", [
+      showAlert("Scheduled", "Interview scheduled and student notified.", [
         { text: "OK", onPress: () => router.back() },
       ]);
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to schedule interview.");
+      showAlert("Error", e.message || "Failed to schedule interview.");
     } finally {
+      schedulingRef.current = false;
       setScheduling(false);
     }
   };
@@ -278,7 +290,7 @@ export default function ApplicantDetailScreen() {
     roundInterviews.find((iv) => iv.round_number === currentRound) ?? null;
   const showMarkSection =
     !!currentInterview &&
-    new Date(currentInterview.date_time).getTime() < Date.now() &&
+    parseDbDate(currentInterview.date_time).getTime() < Date.now() &&
     currentInterview.result === "pending" &&
     app?.status !== "selected" &&
     app?.status !== "rejected";
@@ -289,23 +301,26 @@ export default function ApplicantDetailScreen() {
   };
 
   const handleMarkRejected = async () => {
-    if (!app || !currentInterview) return;
+    if (!app || !currentInterview || markingRef.current) return;
+    markingRef.current = true;
     setMarking(true);
     try {
-      const { error: ivError } = await supabase
+      const { data: ivRows, error: ivError } = await supabase
         .from("interviews")
         .update({ result: "rejected" })
-        .eq("id", currentInterview.id);
-      if (ivError) {
-        Alert.alert("Update Failed", "Could not mark round result: " + ivError.message);
+        .eq("id", currentInterview.id)
+        .select("id");
+      if (ivError || !ivRows || ivRows.length === 0) {
+        showAlert("Update Failed", "Could not mark round result: " + (ivError?.message ?? NO_ROWS_MESSAGE));
         return;
       }
-      const { error: appError } = await supabase
+      const { data: appRows, error: appError } = await supabase
         .from("applications")
         .update({ status: "rejected" })
-        .eq("id", app.id);
-      if (appError) {
-        Alert.alert("Status Update Failed", "Round marked, but application status failed: " + appError.message);
+        .eq("id", app.id)
+        .select("id");
+      if (appError || !appRows || appRows.length === 0) {
+        showAlert("Status Update Failed", "Round marked, but application status failed: " + (appError?.message ?? NO_ROWS_MESSAGE));
         return;
       }
       const { error: notifError } = await supabase.from("notifications").insert({
@@ -314,38 +329,42 @@ export default function ApplicantDetailScreen() {
         read: false,
       });
       if (notifError) {
-        Alert.alert("Notification Failed", "Result saved, but the student notification failed: " + notifError.message);
+        showAlert("Notification Failed", "Result saved, but the student notification failed: " + notifError.message);
         return;
       }
-      Alert.alert("Saved", `${roundName(currentRound)} marked as rejected.`);
+      showAlert("Saved", `${roundName(currentRound)} marked as rejected.`);
       await refreshRoundState();
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to save round result.");
+      showAlert("Error", e.message || "Failed to save round result.");
     } finally {
+      markingRef.current = false;
       setMarking(false);
     }
   };
 
   const handleMarkSelected = async () => {
-    if (!app || !currentInterview) return;
+    if (!app || !currentInterview || markingRef.current) return;
+    markingRef.current = true;
     setMarking(true);
     try {
-      const { error: ivError } = await supabase
+      const { data: ivRows, error: ivError } = await supabase
         .from("interviews")
         .update({ result: "cleared" })
-        .eq("id", currentInterview.id);
-      if (ivError) {
-        Alert.alert("Update Failed", "Could not mark round result: " + ivError.message);
+        .eq("id", currentInterview.id)
+        .select("id");
+      if (ivError || !ivRows || ivRows.length === 0) {
+        showAlert("Update Failed", "Could not mark round result: " + (ivError?.message ?? NO_ROWS_MESSAGE));
         return;
       }
       if (currentRound < totalRounds) {
         const nextRound = currentRound + 1;
-        const { error: appError } = await supabase
+        const { data: appRows, error: appError } = await supabase
           .from("applications")
           .update({ current_round: nextRound, status: "round_cleared" })
-          .eq("id", app.id);
-        if (appError) {
-          Alert.alert("Status Update Failed", "Round marked, but advancing the round failed: " + appError.message);
+          .eq("id", app.id)
+          .select("id");
+        if (appError || !appRows || appRows.length === 0) {
+          showAlert("Status Update Failed", "Round marked, but advancing the round failed: " + (appError?.message ?? NO_ROWS_MESSAGE));
           return;
         }
         const { error: notifError } = await supabase.from("notifications").insert({
@@ -354,19 +373,20 @@ export default function ApplicantDetailScreen() {
           read: false,
         });
         if (notifError) {
-          Alert.alert("Notification Failed", "Advanced to next round, but the student notification failed: " + notifError.message);
+          showAlert("Notification Failed", "Advanced to next round, but the student notification failed: " + notifError.message);
           return;
         }
         setValue("round_number", nextRound, { shouldValidate: true });
-        Alert.alert("Saved", `${roundName(currentRound)} cleared. Schedule Round ${nextRound} below.`);
+        showAlert("Saved", `${roundName(currentRound)} cleared. Schedule Round ${nextRound} below.`);
         await refreshRoundState();
       } else {
-        const { error: appError } = await supabase
+        const { data: appRows, error: appError } = await supabase
           .from("applications")
           .update({ status: "selected" })
-          .eq("id", app.id);
-        if (appError) {
-          Alert.alert("Status Update Failed", "Round marked, but final selection failed: " + appError.message);
+          .eq("id", app.id)
+          .select("id");
+        if (appError || !appRows || appRows.length === 0) {
+          showAlert("Status Update Failed", "Round marked, but final selection failed: " + (appError?.message ?? NO_ROWS_MESSAGE));
           return;
         }
         const { error: notifError } = await supabase.from("notifications").insert({
@@ -375,15 +395,16 @@ export default function ApplicantDetailScreen() {
           read: false,
         });
         if (notifError) {
-          Alert.alert("Notification Failed", "Student placed, but the placement notification failed: " + notifError.message);
+          showAlert("Notification Failed", "Student placed, but the placement notification failed: " + notifError.message);
           return;
         }
-        Alert.alert("Placed", `${student?.full_name ?? "Student"} is placed at ${companyName}.`);
+        showAlert("Placed", `${student?.full_name ?? "Student"} is placed at ${companyName}.`);
         await refreshRoundState();
       }
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to save round result.");
+      showAlert("Error", e.message || "Failed to save round result.");
     } finally {
+      markingRef.current = false;
       setMarking(false);
     }
   };
@@ -545,7 +566,7 @@ export default function ApplicantDetailScreen() {
                   <Text style={styles.sectionSubtitle}>
                     {roundName(currentRound)} · Round {currentRound} of {totalRounds} ·
                     interviewed on{" "}
-                    {new Date(currentInterview.date_time).toLocaleString()}
+                    {parseDbDate(currentInterview.date_time).toLocaleString()}
                   </Text>
                   <View style={styles.markRow}>
                     <Button
@@ -636,51 +657,12 @@ export default function ApplicantDetailScreen() {
 
                 {/* Cross-Platform Date Picker (Web Browser Calendar + Native Input) */}
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Interview Date</Text>
-                  {Platform.OS === "web" ? (
-                    <View style={styles.webDateContainer}>
-                      {/* Native HTML5 Calendar Picker for Web */}
-                      <input
-                        type="date"
-                        value={selectedDateStr}
-                        min={new Date().toISOString().split("T")[0]}
-                        onChange={(e) => handleDateChange(e.target.value)}
-                        style={{
-                          width: "100%",
-                          height: 48,
-                          padding: "0 12px",
-                          borderRadius: 10,
-                          border: `1px solid ${errors.date_time && !selectedDateStr ? C.danger : C.line}`,
-                          backgroundColor: C.card,
-                          fontSize: 16,
-                          fontFamily: "inherit",
-                          color: C.ink,
-                          outline: "none",
-                          cursor: "pointer",
-                        }}
-                      />
-                    </View>
-                  ) : (
-                    <TextInput
-                      mode="outlined"
-                      placeholder="YYYY-MM-DD (e.g. 2026-10-15)"
-                      value={selectedDateStr}
-                      onChangeText={handleDateChange}
-                      style={styles.input}
-                      outlineColor={
-                        errors.date_time && !selectedDateStr
-                          ? C.danger
-                          : C.line
-                      }
-                      activeOutlineColor={C.accent}
-                      right={<TextInput.Icon icon="calendar" />}
-                    />
-                  )}
-                  {errors.date_time && !selectedDateStr ? (
-                    <HelperText type="error" visible>
-                      Please select an interview date.
-                    </HelperText>
-                  ) : null}
+                  <DateField
+                    label="Interview date"
+                    value={selectedDateStr}
+                    onChange={handleDateChange}
+                    error={errors.date_time && !selectedDateStr ? "Please select an interview date." : undefined}
+                  />
                 </View>
 
                 {/* Time Slot Method Selector */}
@@ -714,23 +696,15 @@ export default function ApplicantDetailScreen() {
                     })}
                   </View>
 
-                  {/* Custom slot text input */}
-                  <TextInput
-                    mode="outlined"
-                    placeholder="Or custom time (HH:MM e.g. 15:30)"
-                    value={selectedTimeSlot}
-                    onChangeText={(txt) => handleSelectSlot(txt.trim())}
-                    style={styles.customTimeInput}
-                    outlineColor={C.line}
-                    activeOutlineColor={C.accent}
-                  />
+                  {/* Custom time via the native time picker */}
+                  <TimeField label="Or pick a custom time" value={selectedTimeSlot} onChange={handleSelectSlot} />
 
                   {selectedDateStr && selectedTimeSlot ? (
                     <View style={styles.slotConfirmedBanner}>
                       <Text style={styles.slotConfirmedText}>
                         Selected slot:{" "}
                         <Text style={{ fontWeight: "700" }}>
-                          {selectedDateStr} at {selectedTimeSlot}
+                          {formatLongDate(selectedDateStr)} at {formatTime(selectedTimeSlot)}
                         </Text>
                       </Text>
                     </View>
@@ -767,7 +741,7 @@ export default function ApplicantDetailScreen() {
                   loading={scheduling}
                   disabled={scheduling}
                   onPress={handleSubmit(handleScheduleInterview, () =>
-                    Alert.alert(
+                    showAlert(
                       "Incomplete Schedule",
                       "Please ensure interview round, date, and a time slot are selected.",
                     ),

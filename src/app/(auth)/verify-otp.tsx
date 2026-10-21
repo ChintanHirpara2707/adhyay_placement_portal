@@ -211,6 +211,8 @@ export default function VerifyOtpScreen() {
               secureTextEntry={secureEntry}
               autoCapitalize="none"
               placeholder="Repeat new password"
+              returnKeyType="go"
+              onSubmitEditing={handleSubmit(onSubmit, onInvalid)}
               left={<TextInput.Icon icon="lock-check-outline" color={C.faint} />}
               onBlur={onBlur}
               onChangeText={onChange}

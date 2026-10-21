@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Alert, Linking, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { StyleSheet, View, Linking, TouchableOpacity } from 'react-native';
+import { showAlert } from '@/lib/alert';
 import { Text, Button, ActivityIndicator } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MotiView } from 'moti';
@@ -21,6 +22,7 @@ interface JobDetails {
   eligible_branches: string[];
   backlog_allowed: boolean;
   deadline: string;
+  status: string;
   job_profiles: string[];
   stipend: number | null;
   bond_years: number | null;
@@ -74,13 +76,14 @@ export default function JobDetailsScreen() {
   const [job, setJob] = useState<JobDetails | null>(null);
   const [hasApplied, setHasApplied] = useState(false);
   const [applying, setApplying] = useState(false);
+  const applyingRef = useRef(false); // blocks a fast double tap from registering twice
   const [dismissed, setDismissed] = useState(false);
 
   const fetchJobById = async () => {
     const { data: jobData, error: jobError } = await supabase
       .from('job_postings')
       .select(
-        'id, title, description, ctc, min_cgpa, eligible_branches, backlog_allowed, deadline, job_profiles, stipend, bond_years, location, round_names, round_dates, companies (company_name, description, website)'
+        'id, title, description, ctc, min_cgpa, eligible_branches, backlog_allowed, deadline, status, job_profiles, stipend, bond_years, location, round_names, round_dates, companies (company_name, description, website)'
       )
       .eq('id', id)
       .single();
@@ -108,7 +111,7 @@ export default function JobDetailsScreen() {
         setHasApplied(await checkIfAlreadyApplied(details.id));
         setDismissed(isDismissed(details.id));
       } catch (e: any) {
-        Alert.alert('Error', e.message || 'Failed to retrieve job details.');
+        showAlert('Error', e.message || 'Failed to retrieve job details.');
         router.back();
       } finally {
         setLoading(false);
@@ -117,27 +120,42 @@ export default function JobDetailsScreen() {
   }, [id, user]);
 
   const handleApply = async () => {
-    if (!user || !job) return;
+    if (!user || !job || applyingRef.current) return;
+    if (job.status !== 'open') {
+      showAlert('Drive closed', 'This drive is no longer accepting registrations.');
+      return;
+    }
+    if (isDeadlinePassed(job.deadline)) {
+      showAlert('Deadline passed', 'The registration deadline for this drive has passed.');
+      return;
+    }
+    applyingRef.current = true;
     setApplying(true);
     try {
       if (await checkIfAlreadyApplied(job.id)) {
         setHasApplied(true);
-        Alert.alert('Already Registered', 'You have already registered for this drive.');
-        setApplying(false);
+        showAlert('Already Registered', 'You have already registered for this drive.');
         return;
       }
       const { error } = await supabase
         .from('applications')
         .insert({ student_id: user.id, job_id: job.id, status: 'applied' });
       if (error) {
-        Alert.alert('Registration Failed', error.message);
+        // 23505 = unique violation: the registration already exists.
+        if ((error as any).code === '23505') {
+          setHasApplied(true);
+          showAlert('Already Registered', 'You have already registered for this drive.');
+          return;
+        }
+        showAlert('Registration Failed', error.message);
         return;
       }
       setHasApplied(true);
-      Alert.alert('Registered', 'You are registered for this campus drive!');
+      showAlert('Registered', 'You are registered for this campus drive!');
     } catch (e: any) {
-      Alert.alert('Unexpected Error', e.message || 'Something went wrong.');
+      showAlert('Unexpected Error', e.message || 'Something went wrong.');
     } finally {
+      applyingRef.current = false;
       setApplying(false);
     }
   };
@@ -146,7 +164,7 @@ export default function JobDetailsScreen() {
     if (!job) return;
     dismissJob(job.id);
     setDismissed(true);
-    Alert.alert('Hidden', 'This drive is hidden from your feed on this device.', [
+    showAlert('Hidden', 'This drive is hidden from your feed on this device.', [
       { text: 'OK', onPress: () => router.back() },
     ]);
   };

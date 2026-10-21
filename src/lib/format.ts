@@ -1,3 +1,21 @@
+/**
+ * Parses a timestamp coming from the database.
+ *
+ * Postgres `timestamp without time zone` columns come back as "2026-12-21T04:30:00" with NO offset, and
+ * JavaScript parses an offset-less ISO string as LOCAL time. The app always saves `toISOString()` (UTC),
+ * so the stored wall-clock is UTC: treat offset-less values as UTC, otherwise every time shifts by the
+ * viewer's UTC offset and "upcoming" vs "past" is computed wrongly. Values that already carry an offset
+ * ("Z", "+00:00", timestamptz columns) are untouched, and plain dates ("2026-12-21") stay local.
+ */
+export function parseDbDate(value: string | null | undefined): Date {
+  if (!value) return new Date(NaN);
+  const v = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(v) && !/(Z|[+-]\d{2}(:?\d{2})?)$/i.test(v)) {
+    return new Date(v.replace(' ', 'T') + 'Z');
+  }
+  return new Date(v);
+}
+
 export function formatCTC(ctc: number | null | undefined): string {
   if (ctc == null || Number.isNaN(Number(ctc))) return 'Not Disclosed';
   const n = Number(ctc);
@@ -8,14 +26,14 @@ export function formatCTC(ctc: number | null | undefined): string {
 
 export function formatDeadline(dateString: string | null | undefined): string {
   if (!dateString) return 'N/A';
-  const d = new Date(dateString);
+  const d = parseDbDate(dateString);
   if (Number.isNaN(d.getTime())) return 'N/A';
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export function formatDateTime(dateString: string | null | undefined): string {
   if (!dateString) return 'N/A';
-  const d = new Date(dateString);
+  const d = parseDbDate(dateString);
   if (Number.isNaN(d.getTime())) return 'N/A';
   return d.toLocaleString(undefined, {
     month: 'short',
@@ -28,18 +46,18 @@ export function formatDateTime(dateString: string | null | undefined): string {
 
 export function isDeadlineUrgent(deadline: string | null | undefined): boolean {
   if (!deadline) return false;
-  const t = new Date(deadline).getTime() - Date.now();
+  const t = parseDbDate(deadline).getTime() - Date.now();
   return t > 0 && t <= 48 * 60 * 60 * 1000;
 }
 
 export function isDeadlinePassed(deadline: string | null | undefined): boolean {
   if (!deadline) return false;
-  return new Date(deadline).getTime() < Date.now();
+  return parseDbDate(deadline).getTime() < Date.now();
 }
 
 export function timeAgo(dateString: string | null | undefined): string {
   if (!dateString) return '';
-  const diff = Date.now() - new Date(dateString).getTime();
+  const diff = Date.now() - parseDbDate(dateString).getTime();
   if (Number.isNaN(diff)) return '';
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'Just now';
@@ -48,7 +66,7 @@ export function timeAgo(dateString: string | null | undefined): string {
   if (hrs < 24) return `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
   if (days < 7) return `${days}d ago`;
-  return new Date(dateString).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return parseDbDate(dateString).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 export function getInitials(name: string | null | undefined, email?: string | null): string {

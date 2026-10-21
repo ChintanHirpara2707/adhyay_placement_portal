@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, FlatList, Alert, Linking } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { StyleSheet, View, FlatList, Linking } from 'react-native';
+import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
 import { Text, Button, ActivityIndicator } from 'react-native-paper';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
@@ -56,8 +57,7 @@ export default function JobApplicantsScreen() {
         .eq('job_id', jobId);
 
       if (error) {
-        Alert.alert('Error', 'Failed to retrieve applicants.');
-        router.back();
+        showAlert('Could not load applicants', error.message, [{ text: 'Go back', onPress: () => router.back() }]);
         return;
       }
 
@@ -81,29 +81,48 @@ export default function JobApplicantsScreen() {
         }
       }
     } catch (e: any) {
-      Alert.alert('Unexpected Error', e.message || 'Something went wrong.');
+      showAlert('Unexpected Error', e.message || 'Something went wrong.');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchApplicantsForJob();
-  }, [jobId]);
+  // Refetch on focus so statuses changed on the applicant screen (interview scheduled, rejected...) are current.
+  useFocusEffect(
+    useCallback(() => {
+      fetchApplicantsForJob();
+    }, [jobId])
+  );
+
+  // Applicant ids with a status change in flight, so a double tap cannot send two updates/notifications.
+  const busyRef = useRef<Set<string>>(new Set());
+  const [busyIds, setBusyIds] = useState<string[]>([]);
+  const setBusy = (id: string, on: boolean) => {
+    if (on) busyRef.current.add(id);
+    else busyRef.current.delete(id);
+    setBusyIds(Array.from(busyRef.current));
+  };
 
   const filterByStatus = (list: Applicant[]) => (filter === 'all' ? list : list.filter((a) => a.status === filter));
   const visible = filterByStatus(applicants);
 
   const handleUpdateStatus = async (applicant: Applicant, newStatus: 'shortlisted' | 'rejected') => {
+    if (busyRef.current.has(applicant.id)) return;
+    setBusy(applicant.id, true);
     try {
-      // 1. Update application status
-      const { error: updateError } = await supabase
+      // 1. Update application status (select() so a row filtered out by RLS is detected, not silently "successful")
+      const { data: updated, error: updateError } = await supabase
         .from('applications')
         .update({ status: newStatus })
-        .eq('id', applicant.id);
+        .eq('id', applicant.id)
+        .select('id');
 
       if (updateError) {
-        Alert.alert('Error', 'Failed to update applicant status: ' + updateError.message);
+        showAlert('Error', 'Failed to update applicant status: ' + updateError.message);
+        return;
+      }
+      if (!updated || updated.length === 0) {
+        showAlert('Status not changed', NO_ROWS_MESSAGE);
         return;
       }
 
@@ -120,18 +139,23 @@ export default function JobApplicantsScreen() {
           read: false,
         });
 
-      if (notifError) {
-        console.warn('Failed to insert notification:', notifError.message);
-      }
-
       // 3. Update state locally
       setApplicants((prev) =>
         prev.map((app) => (app.id === applicant.id ? { ...app, status: newStatus } : app))
       );
 
-      Alert.alert('Success', `Applicant has been ${newStatus}.`);
+      if (notifError) {
+        showAlert(
+          'Status updated, student not notified',
+          `The applicant is now ${newStatus}, but the notification could not be sent: ${notifError.message}`
+        );
+      } else {
+        showAlert('Success', `Applicant has been ${newStatus}.`);
+      }
     } catch (e: any) {
-      Alert.alert('Unexpected Error', e.message || 'Something went wrong.');
+      showAlert('Unexpected Error', e.message || 'Something went wrong.');
+    } finally {
+      setBusy(applicant.id, false);
     }
   };
 
@@ -145,7 +169,11 @@ export default function JobApplicantsScreen() {
   }
 
   const handleShortlist = async (applicant: Applicant) => handleUpdateStatus(applicant, 'shortlisted');
-  const handleReject = async (applicant: Applicant) => handleUpdateStatus(applicant, 'rejected');
+  const handleReject = (applicant: Applicant) =>
+    showAlert('Reject applicant?', `${applicant.students?.full_name ?? 'This applicant'} will be told their application was not selected.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Reject', style: 'destructive', onPress: () => handleUpdateStatus(applicant, 'rejected') },
+    ]);
 
   const STATUS_LABELS: Record<string, string> = {
     applied: 'Applied',
@@ -205,6 +233,8 @@ export default function JobApplicantsScreen() {
                       mode="contained"
                       compact
                       onPress={() => handleShortlist(item)}
+                      loading={busyIds.includes(item.id)}
+                      disabled={busyIds.includes(item.id)}
                       style={styles.shortlistBtn}
                       buttonColor={C.accent}
                       textColor="#FFFFFF"
@@ -215,6 +245,7 @@ export default function JobApplicantsScreen() {
                       mode="outlined"
                       compact
                       onPress={() => handleReject(item)}
+                      disabled={busyIds.includes(item.id)}
                       style={styles.rejectBtn}
                       textColor={C.danger}
                     >

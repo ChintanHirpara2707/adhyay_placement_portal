@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, View, FlatList, Alert, RefreshControl } from 'react-native';
+import { StyleSheet, View, FlatList, RefreshControl } from 'react-native';
+import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
 import { Text, Button, FAB, Switch } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '@/lib/supabase';
@@ -46,7 +47,7 @@ export default function CompanyMyJobsScreen() {
         else setLoadingJobs(true);
         await fetchCompanyJobs();
       } catch (e: any) {
-        Alert.alert('Error', e.message || 'Failed to retrieve job postings.');
+        showAlert('Error', e.message || 'Failed to retrieve job postings.');
       } finally {
         setLoadingJobs(false);
         setRefreshing(false);
@@ -63,9 +64,9 @@ export default function CompanyMyJobsScreen() {
 
   const toggleStatus = async (job: JobPosting) => {
     const next = job.status === 'open' ? 'closed' : 'open';
-    const { error } = await supabase.from('job_postings').update({ status: next }).eq('id', job.id);
-    if (error) {
-      Alert.alert('Error', 'Failed to update status: ' + error.message);
+    const { data, error } = await supabase.from('job_postings').update({ status: next }).eq('id', job.id).select('id');
+    if (error || !data || data.length === 0) {
+      showAlert('Error', 'Failed to update status: ' + (error?.message ?? NO_ROWS_MESSAGE));
       return;
     }
     setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, status: next } : j)));

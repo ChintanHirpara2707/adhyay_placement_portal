@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Platform, Image } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
 import { Menu } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -7,7 +7,8 @@ import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/lib/supabase';
 import { getInitials } from '@/lib/format';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { C, LOGO_RATIO } from '@/theme/design';
+import { C } from '@/theme/design';
+import { BrandLogo } from '@/components/BrandLogo';
 
 interface TopNavbarProps {
   title?: string;
@@ -22,6 +23,8 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
 }) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const showRolePill = width >= 480;
   const { user, role, logout } = useAuthStore();
   const [menuVisible, setMenuVisible] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -109,7 +112,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   const pill = rolePill();
 
   return (
-    <View style={[styles.bar, { paddingTop: Platform.OS === 'web' ? 0 : insets.top, height: 60 + (Platform.OS === 'web' ? 0 : insets.top) }]}>
+    <View style={[styles.bar, { paddingTop: Platform.OS === 'web' ? 0 : insets.top, height: 68 + (Platform.OS === 'web' ? 0 : insets.top) }]}>
       <View style={styles.left}>
         {showBack ? (
           <TouchableOpacity
@@ -122,21 +125,18 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
             <MaterialCommunityIcons name="arrow-left" size={22} color={C.ink} />
           </TouchableOpacity>
         ) : (
-          <Image
-            source={require('@/assets/images/logo.png')}
-            style={{ height: 30, width: 30 * LOGO_RATIO }}
-            resizeMode="contain"
-            accessibilityLabel="Adhyay logo"
-          />
+          <BrandLogo size="md" />
         )}
-        <View>
+        <View style={styles.titleBlock}>
           <View style={styles.titleRow}>
-            <Text style={styles.title}>{title}</Text>
-            <View style={[styles.pill, { backgroundColor: pill.bg }]}>
-              <Text style={[styles.pillText, { color: pill.color }]}>{pill.label}</Text>
-            </View>
+            <Text style={styles.title} numberOfLines={1}>{title}</Text>
+            {showRolePill ? (
+              <View style={[styles.pill, { backgroundColor: pill.bg }]}>
+                <Text style={[styles.pillText, { color: pill.color }]}>{pill.label}</Text>
+              </View>
+            ) : null}
           </View>
-          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+          {subtitle ? <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text> : null}
         </View>
       </View>
 
@@ -183,7 +183,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
 
 const styles = StyleSheet.create({
   bar: {
-    height: 60,
+    height: 68,
     backgroundColor: C.paper,
     borderBottomWidth: 1,
     borderBottomColor: C.line,
@@ -194,9 +194,10 @@ const styles = StyleSheet.create({
     zIndex: 20,
     ...(Platform.OS === 'web' ? ({ position: 'sticky', top: 0 } as any) : null),
   },
-  left: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, flexShrink: 1 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { fontSize: 17, fontWeight: '700', color: C.ink, letterSpacing: -0.3 },
+  left: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, flexShrink: 1 },
+  titleBlock: { flex: 1, minWidth: 0, flexShrink: 1 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 0 },
+  title: { fontSize: 17, fontWeight: '700', color: C.ink, letterSpacing: -0.3, flexShrink: 1 },
   subtitle: { fontSize: 11, color: C.muted },
   pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   pillText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },

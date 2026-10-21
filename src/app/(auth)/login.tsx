@@ -18,7 +18,7 @@ import {
 import { Button, HelperText, Text, TextInput } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { z } from "zod";
-import { Brand } from "@/components/ui/Brand";
+import { BrandLogo } from "@/components/BrandLogo";
 import { C, R, shadow } from "@/theme/design";
 
 const PERKS = [
@@ -230,7 +230,7 @@ export default function LoginScreen() {
       {/* Brand panel: desktop only */}
       {isDesktop && (
         <View style={styles.sidePanel}>
-          <Brand size={44} />
+          <BrandLogo size="lg" />
           <View style={styles.sideCenter}>
             <Text style={styles.sideEyebrow}>
               CAMPUS RECRUITMENT MANAGEMENT
@@ -282,7 +282,7 @@ export default function LoginScreen() {
           >
             {!isDesktop && (
               <View style={styles.mobileBrand}>
-                <Brand size={isSmall ? 44 : 52} />
+                <BrandLogo size="lg" />
               </View>
             )}
 
@@ -353,6 +353,8 @@ export default function LoginScreen() {
                       secureTextEntry={secureTextEntry}
                       autoCapitalize="none"
                       placeholder="Enter your password"
+                      returnKeyType="go"
+                      onSubmitEditing={handleSubmit(onSubmit)}
                       outlineColor={C.line}
                       activeOutlineColor={C.accent}
                       outlineStyle={{ borderRadius: R.input, borderWidth: 1 }}
@@ -485,7 +487,7 @@ const styles = StyleSheet.create({
     maxWidth: 460,
     alignSelf: "center",
   },
-  mobileBrand: { alignItems: "center", marginBottom: 20 },
+  mobileBrand: { alignItems: "center", marginBottom: 16 },
   card: {
     width: "100%",
     backgroundColor: C.card,

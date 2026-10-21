@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, View, FlatList, Alert, RefreshControl } from 'react-native';
+import { StyleSheet, View, FlatList, RefreshControl } from 'react-native';
+import { showAlert } from '@/lib/alert';
 import { Text, Button, Banner, Searchbar } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '@/lib/supabase';
@@ -10,7 +11,7 @@ import { TopNavbar } from '@/components/TopNavbar';
 import { JobCardSkeleton } from '@/components/SkeletonLoader';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { StatusChip, EmptyState, PageHeader, pageColumn } from '@/components/ui/kit';
-import { formatCTC, formatDeadline, isDeadlineUrgent } from '@/lib/format';
+import { formatCTC, formatDeadline, isDeadlineUrgent, parseDbDate } from '@/lib/format';
 
 interface JobPosting {
   id: string;
@@ -72,7 +73,7 @@ export default function StudentJobsScreen() {
     });
 
   const sortJobsByDeadline = (list: any[]) =>
-    [...list].sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
+    [...list].sort((a, b) => parseDbDate(a.deadline).getTime() - parseDbDate(b.deadline).getTime());
 
   const navigateToJobDetail = (id: string) => {
     router.push({ pathname: '/(student)/job/[id]' as any, params: { id } });
@@ -95,7 +96,7 @@ export default function StudentJobsScreen() {
       const sorted = sortJobsByDeadline(filtered);
       setJobs(sorted.map((j) => ({ ...j, isApplied: appliedIds.has(j.id) })));
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to load jobs.');
+      showAlert('Error', e.message || 'Failed to load jobs.');
     } finally {
       setLoading(false);
       setRefreshing(false);

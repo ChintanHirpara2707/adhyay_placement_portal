@@ -15,7 +15,7 @@ import {
 import { ActivityIndicator, Text } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
-import { Brand } from "@/components/ui/Brand";
+import { BrandLogo } from "@/components/BrandLogo";
 import { C, R, shadow } from "@/theme/design";
 
 /* ------------------------------------------------------------------ */
@@ -173,7 +173,7 @@ function LandingPage() {
         ]}
       >
         <View style={[styles.navInner, { height: isMobile ? 60 : 72 }]}>
-          <Brand size={isMobile ? 30 : 36} />
+          <BrandLogo size="md" />
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={goLogin}
@@ -474,7 +474,6 @@ function LandingPage() {
             },
           ]}
         >
-          <Brand size={24} />
           <Text style={styles.footerText}>
             © Adhyay • Developed for excellence.
           </Text>
@@ -868,7 +867,7 @@ const styles = StyleSheet.create({
   /* Footer */
   footer: {
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
     paddingTop: 24,
     borderTopWidth: 1,
     borderTopColor: C.line,

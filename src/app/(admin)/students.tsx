@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, ScrollView, Alert } from 'react-native';
+import { StyleSheet, View, ScrollView } from 'react-native';
+import { showAlert } from '@/lib/alert';
 import { Text, TextInput, ActivityIndicator } from 'react-native-paper';
 import { supabase } from '@/lib/supabase';
 import { C } from '@/theme/design';
@@ -45,15 +46,16 @@ export default function StudentsScreen() {
         `);
 
       if (error) {
-        Alert.alert('Error', 'Failed to retrieve student directory: ' + error.message);
+        showAlert('Error', 'Failed to retrieve student directory: ' + error.message);
         return;
       }
 
       setStudents(data as any[] || []);
-      const { data: placed } = await supabase.from('applications').select('student_id').eq('status', 'selected');
+      const { data: placed, error: qErr1 } = await supabase.from('applications').select('student_id').eq('status', 'selected');
+      if (qErr1) throw qErr1;
       setPlacedIds(new Set(((placed as any[]) ?? []).map((p) => p.student_id)));
     } catch (e: any) {
-      Alert.alert('Unexpected Error', e.message || 'Something went wrong.');
+      showAlert('Unexpected Error', e.message || 'Something went wrong.');
     } finally {
       setLoading(false);
     }

@@ -1,18 +1,19 @@
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, View, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
-import { Text, ProgressBar } from 'react-native-paper';
+import { Text, ProgressBar, Button } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
+import { showAlert } from '@/lib/alert';
 import { useAuthStore } from '@/store/authStore';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { C, R } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
 import { Screen } from '@/components/ui/Screen';
-import { Card, SectionHeader, StatCard, StatusChip, EmptyState } from '@/components/ui/kit';
-import { ResponsiveGrid } from '@/components/ui/kit';
+import { Card, SectionHeader, StatusChip, EmptyState } from '@/components/ui/kit';
+import { StatSummary } from '@/components/StatSummary';
 import { ActivityFeedItem } from '@/components/ActivityFeedItem';
-import { formatCTC, formatDeadline } from '@/lib/format';
+import { formatCTC, formatDeadline, parseDbDate } from '@/lib/format';
+import { fetchStudentInterviews, splitInterviews } from '@/lib/interviews';
 
 interface RecJob {
   id: string;
@@ -43,33 +44,27 @@ export default function StudentDashboard() {
 
   const fetchStudentStats = useCallback(async () => {
     if (!user) return;
-    const { data: apps } = await supabase
+    const { data: apps, error: qErr1 } = await supabase
       .from('applications')
       .select('id, status, job_postings!inner(id)')
       .eq('student_id', user.id);
+    if (qErr1) throw qErr1;
     const list = (apps as any[]) ?? [];
     setAppCount(list.length);
     setSelectedCount(list.filter((a) => a.status === 'selected').length);
-    const appIds = list.map((a) => a.id);
-    if (appIds.length > 0) {
-      const { data: ivs } = await supabase
-        .from('interviews')
-        .select('id, date_time')
-        .in('application_id', appIds);
-      const upcoming = ((ivs as any[]) ?? []).filter((v) => new Date(v.date_time).getTime() >= Date.now());
-      setInterviewCount(upcoming.length);
-    } else {
-      setInterviewCount(0);
-    }
+    // Same query + upcoming/past rule as the Interviews screen, so the two always agree.
+    const { upcoming } = splitInterviews(await fetchStudentInterviews(user.id));
+    setInterviewCount(upcoming.length);
   }, [user]);
 
   const fetchProfileCompletion = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data, error: qErr3 } = await supabase
       .from('students')
       .select('full_name, branch, cgpa, phone, skills, resume_url')
       .eq('id', user.id)
       .maybeSingle();
+    if (qErr3) throw qErr3;
     const s = (data as any) ?? {};
     setFullName(s.full_name ?? '');
     const fields = [s.full_name, s.branch, s.cgpa, s.phone, s.skills?.length ? 'x' : null, s.resume_url];
@@ -79,20 +74,22 @@ export default function StudentDashboard() {
 
   const fetchRecommendedJobs = useCallback(async () => {
     if (!user) return;
-    const { data: student } = await supabase
+    const { data: student, error: qErr4 } = await supabase
       .from('students')
       .select('cgpa, branch, backlog_count')
       .eq('id', user.id)
       .maybeSingle();
+    if (qErr4) throw qErr4;
     const st = student as any;
     if (!st?.branch || st?.cgpa == null) {
       setRecommended([]);
       return;
     }
-    const { data: openJobs } = await supabase
+    const { data: openJobs, error: qErr5 } = await supabase
       .from('job_postings')
       .select('id, title, ctc, deadline, min_cgpa, eligible_branches, backlog_allowed, companies(company_name)')
       .eq('status', 'open');
+    if (qErr5) throw qErr5;
     const branch = String(st.branch).trim().toLowerCase();
     const filtered = ((openJobs as any[]) ?? [])
       .filter((j) => {
@@ -103,19 +100,20 @@ export default function StudentDashboard() {
         const backOk = j.backlog_allowed || Number(st.backlog_count ?? 0) === 0;
         return cgpaOk && bOk && backOk;
       })
-      .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
+      .sort((a, b) => parseDbDate(a.deadline).getTime() - parseDbDate(b.deadline).getTime())
       .slice(0, 3);
     setRecommended(filtered);
   }, [user]);
 
   const fetchRecentActivity = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data, error: qErr6 } = await supabase
       .from('notifications')
       .select('id, message, created_at, read')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(5);
+    if (qErr6) throw qErr6;
     setActivity((data as any[]) ?? []);
   }, [user]);
 
@@ -124,6 +122,8 @@ export default function StudentDashboard() {
       if (isRefresh) setRefreshing(true);
       try {
         await Promise.all([fetchProfileCompletion(), fetchStudentStats(), fetchRecommendedJobs(), fetchRecentActivity()]);
+      } catch (e: any) {
+        showAlert('Could not load your dashboard', e?.message || 'Something went wrong. Pull down to retry.');
       } finally {
         if (isRefresh) setRefreshing(false);
       }
@@ -151,19 +151,21 @@ export default function StudentDashboard() {
         <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: 60 }}>
           <View style={styles.hero}>
             {completion < 100 ? (
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => router.push('/(student)/profile' as any)}
-                accessibilityRole="button"
-                accessibilityLabel={`Profile ${completion} percent complete. Open profile to complete it.`}
-              >
-                <View style={styles.heroRow}>
-                  <Text style={styles.heroTitle}>Profile {completion}% complete</Text>
-                  <MaterialCommunityIcons name="chevron-right" size={22} color={C.muted} />
-                </View>
+              <View>
+                <Text style={styles.heroTitle}>Profile {completion}% complete</Text>
                 <ProgressBar progress={completion / 100} color={C.accent} style={styles.bar} />
                 <Text style={styles.heroHint}>Add CGPA, branch, skills and resume to unlock jobs.</Text>
-              </TouchableOpacity>
+                <Button
+                  mode="contained"
+                  contentStyle={styles.actionContent}
+                  style={[styles.actionBtn, styles.heroBtn]}
+                  buttonColor={C.accent}
+                  textColor="#FFFFFF"
+                  onPress={() => router.push('/(student)/profile' as any)}
+                >
+                  Complete profile
+                </Button>
+              </View>
             ) : (
               <>
                 <Text style={styles.heroTitle}>{recommended.length} {recommended.length === 1 ? 'drive matches' : 'drives match'} you</Text>
@@ -174,11 +176,38 @@ export default function StudentDashboard() {
         </MotiView>
 
         <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: 120 }}>
-          <ResponsiveGrid>
-            <StatCard label="Applications" value={appCount} icon="file-document-outline" tone="accent" />
-            <StatCard label="Interviews" value={interviewCount} icon="calendar-clock" tone="warning" sub="upcoming" />
-            <StatCard label="Selected" value={selectedCount} icon="check-decagram" tone="success" sub="offers" />
-          </ResponsiveGrid>
+          <View style={styles.summaryBlock}>
+            <StatSummary
+              items={[
+                { label: 'Applications', value: appCount },
+                { label: 'Interviews', value: interviewCount, sub: 'upcoming' },
+                { label: 'Selected', value: selectedCount, sub: 'offers' },
+              ]}
+            />
+            <View style={styles.actionRow}>
+              <Button
+                mode="contained"
+                icon="arrow-right"
+                contentStyle={styles.actionContent}
+                style={styles.actionBtn}
+                buttonColor={C.accent}
+                textColor="#FFFFFF"
+                onPress={() => router.push('/(student)/applications' as any)}
+              >
+                View applications
+              </Button>
+              <Button
+                mode="outlined"
+                icon="calendar-clock"
+                contentStyle={styles.actionContent}
+                style={[styles.actionBtn, styles.actionOutline]}
+                textColor={C.accent}
+                onPress={() => router.push('/(student)/interviews' as any)}
+              >
+                View interviews
+              </Button>
+            </View>
+          </View>
         </MotiView>
 
         <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: 180 }}>
@@ -241,7 +270,12 @@ const styles = StyleSheet.create({
   greeting: { fontSize: 26, fontWeight: '700', color: C.ink, letterSpacing: -0.5 },
   sub: { fontSize: 15, color: C.muted, marginTop: 2, lineHeight: 22 },
   hero: { backgroundColor: C.surface, borderRadius: R.card, borderWidth: 1, borderColor: C.line, padding: 18, gap: 6 },
-  heroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  summaryBlock: { gap: 12 },
+  actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  actionBtn: { flexGrow: 1, flexBasis: 150, borderRadius: R.button },
+  actionOutline: { borderColor: C.line },
+  actionContent: { minHeight: 46 },
+  heroBtn: { marginTop: 14, flexGrow: 0, alignSelf: 'flex-start', flexBasis: 'auto' },
   heroTitle: { fontSize: 17, fontWeight: '600', color: C.ink, letterSpacing: -0.2 },
   heroHint: { fontSize: 14, color: C.muted, lineHeight: 20, marginTop: 6 },
   bar: { height: 6, borderRadius: 3, backgroundColor: C.line, marginTop: 10 },

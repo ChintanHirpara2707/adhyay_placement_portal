@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, FlatList, Alert } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { StyleSheet, View, FlatList } from 'react-native';
+import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
 import { Text, Button, ActivityIndicator } from 'react-native-paper';
 import { supabase } from '@/lib/supabase';
 import { C } from '@/theme/design';
@@ -37,13 +38,13 @@ export default function ApprovalsScreen() {
         .eq('approved', false);
 
       if (error) {
-        Alert.alert('Error', 'Failed to fetch pending companies: ' + error.message);
+        showAlert('Error', 'Failed to fetch pending companies: ' + error.message);
         return;
       }
 
       setCompanies(data as any[] || []);
     } catch (e: any) {
-      Alert.alert('Unexpected Error', e.message || 'Something went wrong.');
+      showAlert('Unexpected Error', e.message || 'Something went wrong.');
     } finally {
       setLoading(false);
     }
@@ -53,43 +54,83 @@ export default function ApprovalsScreen() {
     fetchPendingCompanies();
   }, []);
 
-  const handleApprove = async (companyId: string) => {
+  // Company ids with a decision in flight (ref = instant guard against double taps).
+  const busyRef = useRef<Set<string>>(new Set());
+  const [busyIds, setBusyIds] = useState<string[]>([]);
+  const setBusy = (id: string, on: boolean) => {
+    if (on) busyRef.current.add(id);
+    else busyRef.current.delete(id);
+    setBusyIds(Array.from(busyRef.current));
+  };
+
+  const approve = async (companyId: string) => {
+    if (busyRef.current.has(companyId)) return;
+    setBusy(companyId, true);
     try {
-      const { error } = await supabase
+      // select() detects an update that RLS filtered out (it would otherwise look successful).
+      const { data, error } = await supabase
         .from('companies')
         .update({ approved: true })
-        .eq('id', companyId);
+        .eq('id', companyId)
+        .select('id');
 
       if (error) {
-        Alert.alert('Error', 'Failed to approve company: ' + error.message);
+        showAlert('Error', 'Failed to approve company: ' + error.message);
+        return;
+      }
+      if (!data || data.length === 0) {
+        showAlert('Not approved', NO_ROWS_MESSAGE);
         return;
       }
 
       setCompanies((prev) => prev.filter((c) => c.id !== companyId));
-      Alert.alert('Success', 'Company has been approved.');
+      showAlert('Success', 'Company has been approved.');
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Something went wrong.');
+      showAlert('Error', e.message || 'Something went wrong.');
+    } finally {
+      setBusy(companyId, false);
     }
   };
 
-  const handleReject = async (companyId: string) => {
+  const reject = async (companyId: string) => {
+    if (busyRef.current.has(companyId)) return;
+    setBusy(companyId, true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('companies')
         .delete()
-        .eq('id', companyId);
+        .eq('id', companyId)
+        .select('id');
 
       if (error) {
-        Alert.alert('Error', 'Failed to reject company: ' + error.message);
+        showAlert('Error', 'Failed to reject company: ' + error.message);
+        return;
+      }
+      if (!data || data.length === 0) {
+        showAlert('Not rejected', NO_ROWS_MESSAGE);
         return;
       }
 
       setCompanies((prev) => prev.filter((c) => c.id !== companyId));
-      Alert.alert('Success', 'Company registration has been rejected and deleted.');
+      showAlert('Success', 'Company registration has been rejected and deleted.');
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Something went wrong.');
+      showAlert('Error', e.message || 'Something went wrong.');
+    } finally {
+      setBusy(companyId, false);
     }
   };
+
+  const handleApprove = (company: PendingCompany) =>
+    showAlert('Approve company?', `${company.company_name || 'This company'} will be able to post drives and see applicants.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Approve', onPress: () => approve(company.id) },
+    ]);
+
+  const handleReject = (company: PendingCompany) =>
+    showAlert('Reject and delete?', `${company.company_name || 'This company'}'s registration will be permanently deleted. This cannot be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Reject', style: 'destructive', onPress: () => reject(company.id) },
+    ]);
 
   if (loading) {
     return (
@@ -136,7 +177,9 @@ export default function ApprovalsScreen() {
             <View style={styles.actionButtons}>
               <Button
                 mode="contained"
-                onPress={() => handleApprove(item.id)}
+                onPress={() => handleApprove(item)}
+                loading={busyIds.includes(item.id)}
+                disabled={busyIds.includes(item.id)}
                 style={styles.actionBtn}
                 contentStyle={styles.btnContent}
                 buttonColor={C.accent}
@@ -147,7 +190,8 @@ export default function ApprovalsScreen() {
               </Button>
               <Button
                 mode="outlined"
-                onPress={() => handleReject(item.id)}
+                onPress={() => handleReject(item)}
+                disabled={busyIds.includes(item.id)}
                 style={styles.rejectBtn}
                 contentStyle={styles.btnContent}
                 textColor={C.danger}

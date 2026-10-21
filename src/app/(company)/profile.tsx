@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { StyleSheet, View, KeyboardAvoidingView, Platform } from 'react-native';
+import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
 import { TextInput, Button, Text, ActivityIndicator } from 'react-native-paper';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
@@ -46,7 +47,7 @@ export default function CompanyProfileScreen() {
       try {
         const { data, error } = await supabase.from('companies').select('company_name, description, website, approved').eq('id', user.id).maybeSingle();
         if (error) {
-          Alert.alert('Error', 'Failed to fetch company profile: ' + error.message);
+          showAlert('Error', 'Failed to fetch company profile: ' + error.message);
           return;
         }
         if (data) {
@@ -63,16 +64,17 @@ export default function CompanyProfileScreen() {
     if (!user) return;
     setSaving(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('companies')
         .update({ company_name: form.company_name.trim(), description: form.description?.trim() || null, website: form.website?.trim() || null })
-        .eq('id', user.id);
-      if (error) {
-        Alert.alert('Save Error', error.message);
+        .eq('id', user.id)
+        .select('id');
+      if (error || !data || data.length === 0) {
+        showAlert('Save Error', error?.message ?? NO_ROWS_MESSAGE);
         return;
       }
       reset(form);
-      Alert.alert('Saved', 'Company profile updated.');
+      showAlert('Saved', 'Company profile updated.');
     } finally {
       setSaving(false);
     }
@@ -135,7 +137,7 @@ export default function CompanyProfileScreen() {
               </View>
             )}
           />
-          <Button mode="contained" loading={saving} disabled={!isDirty || saving} onPress={handleSubmit(onSave)} buttonColor={C.accent} textColor="#FFFFFF" style={styles.save} contentStyle={styles.saveContent} labelStyle={styles.saveLabel}>
+          <Button mode="contained" loading={saving} disabled={!isDirty || saving} onPress={handleSubmit(onSave, () => showAlert('Check the form', 'Fix the highlighted fields and save again.'))} buttonColor={C.accent} textColor="#FFFFFF" style={styles.save} contentStyle={styles.saveContent} labelStyle={styles.saveLabel}>
             Save Changes
           </Button>
         </Card>

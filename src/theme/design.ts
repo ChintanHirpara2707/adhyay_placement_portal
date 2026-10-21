@@ -23,6 +23,7 @@ export const C = {
   accent: '#2563EB',
   accentStrong: '#1D4ED8',
   accentSoft: '#EFF6FF',
+  navy: '#1E3A8A', // selected chips / deep-blue emphasis
 
   // Status
   success: '#047857',
@@ -36,7 +37,8 @@ export const C = {
   amber: '#F59E0B', // progress / highlight fills (never text)
 };
 
-export const LOGO_RATIO = 259 / 217;
+/** logo.png is 1859x670 (emblem + Devanagari wordmark), so width = height * LOGO_RATIO. */
+export const LOGO_RATIO = 1859 / 670;
 
 export const BP = { small: 380, mobile: 768, desktop: 1024 };
 

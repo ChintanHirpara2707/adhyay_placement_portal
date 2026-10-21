@@ -4,11 +4,23 @@ import { useAuthStore } from '@/store/authStore';
 import { C } from '@/theme/design';
 import { useRouter } from 'expo-router';
 import { MotiView } from 'moti';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Card, Checkbox, HelperText, Switch, Text, TextInput } from 'react-native-paper';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
+import { Button, Card, HelperText, Switch, Text, TextInput } from 'react-native-paper';
 import { z } from 'zod';
+import { DateField } from '@/components/DateField';
+import { BranchPicker } from '@/components/ui/BranchPicker';
+
+/** Parses YYYY-MM-DD as the END of that local day (so the last day of registration stays open); null if not a real date. */
+const parseDeadline = (v: string): Date | null => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  if (!m) return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const date = new Date(y, mo - 1, d, 23, 59, 59);
+  return date.getFullYear() === y && date.getMonth() === mo - 1 && date.getDate() === d ? date : null;
+};
 
 const postJobSchema = z.object({
   title: z.string().trim().min(3, { message: 'Title must be at least 3 characters' }),
@@ -17,7 +29,11 @@ const postJobSchema = z.object({
   min_cgpa: z.coerce.number().min(0).max(10, { message: 'Min CGPA must be between 0 and 10' }),
   eligible_branches: z.array(z.string()).min(1, { message: 'Select at least one eligible branch' }),
   backlog_allowed: z.boolean(),
-  deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Format must be YYYY-MM-DD' }),
+  deadline: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Format must be YYYY-MM-DD' })
+    .refine((v) => parseDeadline(v) !== null, { message: 'Enter a real calendar date' })
+    .refine((v) => { const d = parseDeadline(v); return d === null || d.getTime() > Date.now(); }, { message: 'Deadline must be in the future' }),
   total_rounds: z.coerce.number().int().min(1, { message: 'At least 1 round' }).max(10, { message: 'Max 10 rounds' }),
   round_names: z.array(z.string()),
   job_profiles: z.array(z.string()),
@@ -65,24 +81,6 @@ const postJobResolver = (data: PostJobFormData) => {
   };
 };
 
-const BRANCHES = [
-  "BCA",
-  "MCA",
-  "BSc.IT",
-  "MSc.IT",
-  "BSc.CS",
-  "MSc.CS",
-  "CE",
-  "CSE",
-  "IT",
-  "EE",
-  "ECE",
-  "EEE",
-  "EIE",
-  "AI-DS",
-  "AIML",
-  "CS-BS",
-];
 
 export default function PostJobScreen() {
   const router = useRouter();
@@ -90,7 +88,8 @@ export default function PostJobScreen() {
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { control, handleSubmit, watch, setValue, formState: { errors } } = useForm<PostJobFormData>({
+  const submittingRef = useRef(false);
+  const { control, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<PostJobFormData>({
     resolver: postJobResolver,
     defaultValues: {
       title: '',
@@ -130,15 +129,31 @@ export default function PostJobScreen() {
   };
 
   const onSubmit = async (data: PostJobFormData) => {
-    if (!user || isSubmitting) return;
+    // Ref guard: state updates are async, so two rapid taps could both get past `isSubmitting`.
+    if (!user || submittingRef.current) return;
+    submittingRef.current = true;
     setIsSubmitting(true);
     setLoading(true);
 
     try {
-      const deadlineDate = new Date(data.deadline);
-      if (isNaN(deadlineDate.getTime())) {
-        Alert.alert('Validation Error', 'Please enter a valid date.');
-        setLoading(false);
+      const deadlineDate = parseDeadline(data.deadline);
+      if (!deadlineDate) {
+        showAlert('Validation Error', 'Please enter a valid date.');
+        return;
+      }
+
+      // Only approved companies may publish drives.
+      const { data: company, error: companyError } = await supabase
+        .from('companies')
+        .select('approved')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (companyError) {
+        showAlert('Could not verify your company', companyError.message);
+        return;
+      }
+      if (!company?.approved) {
+        showAlert('Approval pending', 'Your company has not been approved by the placement cell yet, so you cannot publish a job.');
         return;
       }
 
@@ -149,7 +164,7 @@ export default function PostJobScreen() {
       const locationVal = (data.location ?? '').trim() === '' ? null : data.location.trim();
       const roundDates = Array.from({ length: data.total_rounds }, (_, i) => ((data.round_dates ?? [])[i] ?? '').trim());
 
-      const { error } = await supabase
+      const { data: created, error } = await supabase
         .from('job_postings')
         .insert({
           company_id: user.id,
@@ -168,22 +183,31 @@ export default function PostJobScreen() {
           bond_years: bondVal,
           location: locationVal,
           round_dates: roundDates,
-        });
+        })
+        .select('id');
 
       if (error) {
-        Alert.alert('Database Error', 'Failed to publish job: ' + error.message);
+        showAlert('Database Error', 'Failed to publish job: ' + error.message);
+        return;
+      }
+      if (!created || created.length === 0) {
+        showAlert('Job not saved', NO_ROWS_MESSAGE);
         return;
       }
 
-      // Redirect immediately (replace: no back-navigation into the filled form).
+      // The tab navigator keeps this screen mounted, so clear the form or a stale copy could be published twice.
+      reset();
       router.replace('/(company)/my-jobs' as any);
     } catch (e: any) {
-      Alert.alert('Unexpected Error', e.message || 'Something went wrong.');
+      showAlert('Unexpected Error', e.message || 'Something went wrong.');
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
       setLoading(false);
     }
   };
+
+  const onInvalid = () => showAlert('Check the form', 'Some fields need attention. Fix the highlighted fields and publish again.');
 
   return (
     <View style={{ flex: 1, backgroundColor: C.paper }}>
@@ -312,24 +336,12 @@ export default function PostJobScreen() {
               name="deadline"
               render={({ field: { onChange, onBlur, value } }) => (
                 <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Application Deadline (YYYY-MM-DD)</Text>
-                  <TextInput
-                    mode="outlined"
-                    placeholder="2026-12-31"
-                    onBlur={onBlur}
-                    onChangeText={onChange}
+                  <DateField
+                    label="Application deadline"
                     value={value}
-                    error={!!errors.deadline}
-                    style={styles.input}
-                    outlineColor={C.line}
-                    activeOutlineColor={C.accent}
-                    outlineStyle={{ borderRadius: 10, borderWidth: 1 }}
+                    onChange={onChange}
+                    error={errors.deadline?.message}
                   />
-                  {errors.deadline && (
-                    <HelperText type="error" visible={!!errors.deadline} style={styles.errorText}>
-                      {errors.deadline.message}
-                    </HelperText>
-                  )}
                 </View>
               )}
             />
@@ -357,35 +369,9 @@ export default function PostJobScreen() {
                 control={control}
                 name="eligible_branches"
                 render={({ field: { onChange, value } }) => (
-                  <View style={styles.checkboxGrid}>
-                    {BRANCHES.map((branch) => {
-                      const isChecked = value.includes(branch);
-                      return (
-                        <Checkbox.Item
-                          key={branch}
-                          label={branch}
-                          status={isChecked ? 'checked' : 'unchecked'}
-                          color={C.accent}
-                          onPress={() => {
-                            if (isChecked) {
-                              onChange(value.filter((b) => b !== branch));
-                            } else {
-                              onChange([...value, branch]);
-                            }
-                          }}
-                          style={styles.checkboxItem}
-                          labelStyle={styles.checkboxLabel}
-                        />
-                      );
-                    })}
-                  </View>
+                  <BranchPicker value={value} onChange={onChange} error={errors.eligible_branches?.message} />
                 )}
               />
-              {errors.eligible_branches && (
-                <HelperText type="error" visible={!!errors.eligible_branches} style={styles.errorText}>
-                  {errors.eligible_branches.message}
-                </HelperText>
-              )}
             </View>
 
             <View style={styles.checkboxSection}>
@@ -427,17 +413,14 @@ export default function PostJobScreen() {
                           activeOutlineColor={C.accent}
                           outlineStyle={{ borderRadius: 10, borderWidth: 1 }}
                         />
-                        <Text style={[styles.inputLabel, { marginTop: 6 }]}>Round {i + 1} date (YYYY-MM-DD, optional)</Text>
-                        <TextInput
-                          mode="outlined"
-                          placeholder="2026-09-16"
-                          onChangeText={(t) => setRoundDate(i, t)}
-                          value={(watchedDates ?? [])[i] ?? ''}
-                          style={styles.input}
-                          outlineColor={C.line}
-                          activeOutlineColor={C.accent}
-                          outlineStyle={{ borderRadius: 10, borderWidth: 1 }}
-                        />
+                        <View style={{ marginTop: 8 }}>
+                          <DateField
+                            label={`Round ${i + 1} date`}
+                            optional
+                            value={(watchedDates ?? [])[i] ?? ''}
+                            onChange={(v) => setRoundDate(i, v)}
+                          />
+                        </View>
                       </View>
                     ))}
                   </View>
@@ -595,7 +578,7 @@ export default function PostJobScreen() {
               mode="contained"
               loading={loading || isSubmitting}
               disabled={loading || isSubmitting}
-              onPress={handleSubmit(onSubmit)}
+              onPress={handleSubmit(onSubmit, onInvalid)}
               style={styles.button}
               contentStyle={styles.buttonContent}
               buttonColor={C.accent}
@@ -680,18 +663,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
     color: C.ink,
     marginBottom: 4,
-  },
-  checkboxGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  checkboxItem: {
-    width: '50%',
-    paddingVertical: 2,
-  },
-  checkboxLabel: {
-    fontSize: 15,
-    color: C.ink,
   },
   stepperRow: {
     flexDirection: 'row',

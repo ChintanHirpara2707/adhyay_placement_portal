@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, View, RefreshControl, Alert, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, RefreshControl, TouchableOpacity } from 'react-native';
+import { showAlert } from '@/lib/alert';
 import { Text, Button } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { MotiView } from 'moti';
@@ -9,7 +10,8 @@ import { useAuthStore } from '@/store/authStore';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
 import { Screen } from '@/components/ui/Screen';
-import { Card, SectionHeader, StatCard, EmptyState, ResponsiveGrid } from '@/components/ui/kit';
+import { Card, SectionHeader, EmptyState } from '@/components/ui/kit';
+import { StatSummary } from '@/components/StatSummary';
 import { ActivityFeedItem } from '@/components/ActivityFeedItem';
 
 export default function CompanyDashboard() {
@@ -28,7 +30,7 @@ export default function CompanyDashboard() {
     if (!user) return false;
     const { data, error } = await supabase.from('companies').select('approved, company_name').eq('id', user.id).maybeSingle();
     if (error) {
-      Alert.alert('Error', 'Failed to retrieve company status: ' + error.message);
+      showAlert('Error', 'Failed to retrieve company status: ' + error.message);
       return false;
     }
     setApproved((data as any)?.approved ?? false);
@@ -38,7 +40,8 @@ export default function CompanyDashboard() {
 
   const fetchCompanyStats = useCallback(async () => {
     if (!user) return;
-    const { data: jobs } = await supabase.from('job_postings').select('id, status').eq('company_id', user.id);
+    const { data: jobs, error: qErr1 } = await supabase.from('job_postings').select('id, status').eq('company_id', user.id);
+    if (qErr1) throw qErr1;
     const list = (jobs as any[]) ?? [];
     setActiveJobs(list.filter((j) => j.status === 'open').length);
     if (list.length === 0) {
@@ -47,7 +50,8 @@ export default function CompanyDashboard() {
       return;
     }
     const jobIds = list.map((j) => j.id);
-    const { data: apps } = await supabase.from('applications').select('id, status').in('job_id', jobIds);
+    const { data: apps, error: qErr2 } = await supabase.from('applications').select('id, status').in('job_id', jobIds);
+    if (qErr2) throw qErr2;
     const aList = (apps as any[]) ?? [];
     setTotalApplicants(aList.length);
     setShortlisted(aList.filter((a) => a.status === 'shortlisted' || a.status === 'selected').length);
@@ -55,18 +59,20 @@ export default function CompanyDashboard() {
 
   const fetchRecentActivity = useCallback(async () => {
     if (!user) return;
-    const { data: jobs } = await supabase.from('job_postings').select('id, title').eq('company_id', user.id);
+    const { data: jobs, error: qErr3 } = await supabase.from('job_postings').select('id, title').eq('company_id', user.id);
+    if (qErr3) throw qErr3;
     const jobIds = ((jobs as any[]) ?? []).map((j) => j.id);
     if (jobIds.length === 0) {
       setRecent([]);
       return;
     }
-    const { data: apps } = await supabase
+    const { data: apps, error: qErr4 } = await supabase
       .from('applications')
       .select('id, applied_at, status, students(full_name), job_postings(title)')
       .in('job_id', jobIds)
       .order('applied_at', { ascending: false })
       .limit(5);
+    if (qErr4) throw qErr4;
     const items = ((apps as any[]) ?? []).map((a) => ({
       id: a.id,
       message: `${a.students?.full_name ?? 'A candidate'} applied for ${a.job_postings?.title ?? 'a job'} (${a.status})`,
@@ -82,6 +88,8 @@ export default function CompanyDashboard() {
       try {
         const ok = await checkApprovalStatus();
         if (ok) await Promise.all([fetchCompanyStats(), fetchRecentActivity()]);
+      } catch (e: any) {
+        showAlert('Could not load your dashboard', e?.message || 'Something went wrong. Pull down to retry.');
       } finally {
         setChecking(false);
         setRefreshing(false);
@@ -127,23 +135,38 @@ export default function CompanyDashboard() {
               <Text style={styles.heading}>{companyName || 'Dashboard'}</Text>
               <Text style={styles.sub}>Your hiring activity at a glance.</Text>
             </MotiView>
-            <ResponsiveGrid>
-              <StatCard label="Active Jobs" value={activeJobs} icon="briefcase-outline" tone="accent" />
-              <StatCard label="Applicants" value={totalApplicants} icon="account-multiple-outline" tone="warning" />
-              <StatCard label="Shortlisted" value={shortlisted} icon="check-decagram" tone="success" />
-            </ResponsiveGrid>
-            <Button
-              mode="contained"
-              icon="plus"
-              buttonColor={C.accent}
-              textColor="#FFFFFF"
-              style={styles.postBtn}
-              contentStyle={styles.postBtnContent}
-              labelStyle={styles.postBtnLabel}
-              onPress={() => router.push('/(company)/post-job' as any)}
-            >
-              Post New Job
-            </Button>
+            <StatSummary
+              items={[
+                { label: 'Active jobs', value: activeJobs },
+                { label: 'Applicants', value: totalApplicants },
+                { label: 'Shortlisted', value: shortlisted },
+              ]}
+            />
+            <View style={styles.actionRow}>
+              <Button
+                mode="contained"
+                icon="plus"
+                buttonColor={C.accent}
+                textColor="#FFFFFF"
+                style={styles.actionBtn}
+                contentStyle={styles.postBtnContent}
+                labelStyle={styles.postBtnLabel}
+                onPress={() => router.push('/(company)/post-job' as any)}
+              >
+                Post a job
+              </Button>
+              <Button
+                mode="outlined"
+                icon="briefcase-outline"
+                textColor={C.accent}
+                style={[styles.actionBtn, styles.actionOutline]}
+                contentStyle={styles.postBtnContent}
+                labelStyle={styles.postBtnLabel}
+                onPress={() => router.push('/(company)/my-jobs' as any)}
+              >
+                View my jobs
+              </Button>
+            </View>
             <SectionHeader
               title="Recent activity"
               action={
@@ -181,7 +204,9 @@ const styles = StyleSheet.create({
   pendingTitle: { fontSize: 20, fontWeight: '700', color: C.ink, letterSpacing: -0.3 },
   pendingText: { fontSize: 15, color: C.muted, textAlign: 'center', lineHeight: 22, maxWidth: 420 },
   checkBtn: { borderRadius: 10, marginTop: 8, borderColor: C.line },
-  postBtn: { borderRadius: 10 },
+  actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  actionBtn: { flexGrow: 1, flexBasis: 150, borderRadius: 10 },
+  actionOutline: { borderColor: C.line },
   postBtnContent: { paddingVertical: 8, minHeight: 48 },
   postBtnLabel: { fontSize: 16, fontWeight: '600' },
   linkBtn: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },

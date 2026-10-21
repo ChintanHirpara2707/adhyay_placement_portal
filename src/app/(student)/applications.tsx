@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { StyleSheet, View, FlatList, Alert, RefreshControl } from 'react-native';
+import { StyleSheet, View, FlatList, RefreshControl } from 'react-native';
+import { showAlert } from '@/lib/alert';
 import { Text } from 'react-native-paper';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '@/lib/supabase';
@@ -66,13 +67,13 @@ export default function ApplicationsScreen() {
         .order('applied_at', { ascending: false });
 
       if (error) {
-        Alert.alert('Error', 'Failed to retrieve applications: ' + error.message);
+        showAlert('Error', 'Failed to retrieve applications: ' + error.message);
         return;
       }
 
       setApplications(data as any[] || []);
     } catch (e: any) {
-      Alert.alert('Unexpected Error', e.message || 'Something went wrong.');
+      showAlert('Unexpected Error', e.message || 'Something went wrong.');
     } finally {
       setLoading(false);
       setRefreshing(false);

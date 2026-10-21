@@ -6,7 +6,7 @@ import { MotiView } from 'moti';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { C, shadow } from '@/theme/design';
 import { useBreakpoint } from './useBreakpoint';
-import { Brand } from './Brand';
+import { BrandLogo } from '@/components/BrandLogo';
 import { AnimatedToast, ToastType } from '@/components/AnimatedToast';
 
 interface AuthLayoutProps {
@@ -53,7 +53,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ title, subtitle, childre
         {isDesktop ? (
           <View style={styles.split}>
             <View style={styles.panel}>
-              <Brand size={44} sub="Placement Portal" />
+              <BrandLogo size="lg" />
               <Text style={styles.panelTitle}>Start your chapter.</Text>
               <View style={styles.benefits}>
                 {BENEFITS.map((b, i) => (
@@ -69,13 +69,12 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ title, subtitle, childre
                   </MotiView>
                 ))}
               </View>
-              <Text style={styles.panelFoot}>ADHYAY · CAMPUS PLACEMENT</Text>
             </View>
             <View style={styles.formSide}>{form}</View>
           </View>
         ) : (
           <View style={styles.single}>
-            <Brand size={isMobile ? 40 : 44} sub="Placement Portal" />
+            <BrandLogo size="lg" />
             {form}
           </View>
         )}
@@ -113,7 +112,6 @@ const styles = StyleSheet.create({
   benefits: { gap: 14, marginTop: 8 },
   benefit: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   benefitText: { fontSize: 15, color: C.inkSoft, lineHeight: 22, flexShrink: 1 },
-  panelFoot: { fontSize: 11, fontWeight: '600', letterSpacing: 1, color: C.muted, marginTop: 12 },
   formSide: { flex: 1, justifyContent: 'center', padding: 12 },
   single: { width: '100%', maxWidth: 460, alignSelf: 'center', alignItems: 'center', gap: 18 },
   cardWrap: { width: '100%' },

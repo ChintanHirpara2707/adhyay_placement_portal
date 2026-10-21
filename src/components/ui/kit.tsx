@@ -3,7 +3,6 @@ import { Pressable, ScrollView, StyleProp, StyleSheet, View, ViewStyle } from 'r
 import { Text } from 'react-native-paper';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { C, R, shadow } from '@/theme/design';
-import { useBreakpoint } from './useBreakpoint';
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
@@ -120,28 +119,6 @@ const TONES = {
 
 export type Tone = keyof typeof TONES;
 
-export const StatCard: React.FC<{
-  label: string;
-  value: string | number;
-  icon: IconName;
-  tone?: Tone;
-  sub?: string;
-  /** Kept for backwards compatibility with existing call sites; no longer rendered. */
-  index?: string;
-}> = ({ label, value, icon, tone = 'accent', sub }) => {
-  const t = TONES[tone];
-  return (
-    <View style={styles.stat} accessible accessibilityLabel={`${label}: ${value}${sub ? `, ${sub}` : ''}`}>
-      <View style={[styles.statIcon, { backgroundColor: t.bg }]}>
-        <MaterialCommunityIcons name={icon} size={18} color={t.fg} />
-      </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-      {sub ? <Text style={styles.statSub}>{sub}</Text> : null}
-    </View>
-  );
-};
-
 export const StatusChip: React.FC<{ label: string; tone?: Tone }> = ({ label, tone = 'muted' }) => {
   const t = TONES[tone] ?? TONES.muted;
   return (
@@ -194,31 +171,6 @@ export const ErrorState: React.FC<{ title?: string; hint?: string; action?: Reac
 
 export const ListRow: React.FC<{ children: React.ReactNode }> = ({ children }) => <View style={styles.row}>{children}</View>;
 
-export const ResponsiveGrid: React.FC<{ children: React.ReactNode; minItemWidth?: number }> = ({ children, minItemWidth = 150 }) => {
-  const { width, isSmall } = useBreakpoint();
-  const cols = width < 340 ? 1 : width < 768 ? 2 : 4;
-  const count = React.Children.count(children);
-  const perRow = Math.max(1, Math.min(cols, count));
-  const gap = 12;
-  const basis = `${Math.floor(100 / perRow)}%`;
-  return (
-    <View style={[styles.grid, { gap }]}>
-      {React.Children.map(children, (c) => (
-        <View
-          style={{
-            width: isSmall && perRow === 1 ? '100%' : undefined,
-            flexGrow: 1,
-            flexBasis: isSmall && perRow === 1 ? '100%' : (basis as any),
-            minWidth: isSmall ? 0 : minItemWidth,
-          }}
-        >
-          {c}
-        </View>
-      ))}
-    </View>
-  );
-};
-
 const styles = StyleSheet.create({
   card: {
     backgroundColor: C.card,
@@ -259,19 +211,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: '700', color: C.ink, letterSpacing: -0.2, marginTop: 2 },
   subtitle: { fontSize: 14, color: C.muted, marginTop: 2, lineHeight: 20 },
   action: { flexShrink: 0, minHeight: 44, justifyContent: 'center' },
-  stat: {
-    backgroundColor: C.card,
-    borderRadius: R.card,
-    borderWidth: 1,
-    borderColor: C.line,
-    padding: 14,
-    gap: 2,
-    ...shadow(1, 3, 0.04),
-  },
-  statIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  statValue: { fontSize: 24, fontWeight: '700', color: C.ink, letterSpacing: -0.5 },
-  statLabel: { fontSize: 13, fontWeight: '500', color: C.inkSoft },
-  statSub: { fontSize: 12, color: C.muted },
   chip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: R.pill, alignSelf: 'flex-start' },
   chipText: { fontSize: 12, fontWeight: '600' },
   empty: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 12, gap: 6 },
@@ -287,5 +226,4 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 16, fontWeight: '600', color: C.ink, textAlign: 'center' },
   emptyHint: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20, maxWidth: 360 },
   row: { backgroundColor: C.card, borderRadius: R.card, borderWidth: 1, borderColor: C.line, padding: 14, gap: 6 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
 });

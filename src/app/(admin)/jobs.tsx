@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, ScrollView, Alert } from 'react-native';
+import { StyleSheet, View, ScrollView } from 'react-native';
+import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
 import { Text, Button, ActivityIndicator, Searchbar } from 'react-native-paper';
 import { supabase } from '@/lib/supabase';
 import { C } from '@/theme/design';
@@ -49,13 +50,13 @@ export default function JobsScreen() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        Alert.alert('Error', 'Failed to retrieve jobs: ' + error.message);
+        showAlert('Error', 'Failed to retrieve jobs: ' + error.message);
         return;
       }
 
       setJobs(data as any[] || []);
     } catch (e: any) {
-      Alert.alert('Unexpected Error', e.message || 'Something went wrong.');
+      showAlert('Unexpected Error', e.message || 'Something went wrong.');
     } finally {
       setLoading(false);
     }
@@ -73,15 +74,22 @@ export default function JobsScreen() {
     );
   };
 
+  const confirmClose = (jobId: string, title: string) =>
+    showAlert('Close this posting?', `"${title}" will stop accepting registrations.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Close posting', style: 'destructive', onPress: () => handleClosePosting(jobId) },
+    ]);
+
   const handleClosePosting = async (jobId: string) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('job_postings')
         .update({ status: 'closed' })
-        .eq('id', jobId);
+        .eq('id', jobId)
+        .select('id');
 
-      if (error) {
-        Alert.alert('Error', 'Failed to close posting: ' + error.message);
+      if (error || !data || data.length === 0) {
+        showAlert('Error', 'Failed to close posting: ' + (error?.message ?? NO_ROWS_MESSAGE));
         return;
       }
 
@@ -89,9 +97,9 @@ export default function JobsScreen() {
       setJobs((prev) =>
         prev.map((job) => (job.id === jobId ? { ...job, status: 'closed' } : job))
       );
-      Alert.alert('Success', 'Job posting has been closed.');
+      showAlert('Success', 'Job posting has been closed.');
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Something went wrong.');
+      showAlert('Error', e.message || 'Something went wrong.');
     }
   };
 
@@ -151,7 +159,7 @@ export default function JobsScreen() {
               flex: 1,
               render: (item) =>
                 item.status === 'open' ? (
-                  <Button mode="outlined" compact onPress={() => handleClosePosting(item.id)} style={styles.closeBtn} textColor={C.danger} icon="close-box">
+                  <Button mode="outlined" compact onPress={() => confirmClose(item.id, item.title)} style={styles.closeBtn} textColor={C.danger} icon="close-box">
                     Close
                   </Button>
                 ) : (

@@ -4,7 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { PaperProvider } from 'react-native-paper';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useFonts } from 'expo-font';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { supabase } from '@/lib/supabase';
@@ -12,6 +12,7 @@ import { useAuthStore } from '@/store/authStore';
 import { customPaperTheme, Theme } from '@/theme/theme';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { AlertHost } from '@/components/AlertHost';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -41,6 +42,11 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
 }
 
 export default function RootLayout() {
+  // Static web export pre-renders with a 0px window, and React does not repair style-only
+  // hydration mismatches, so width-based sizes (logo, gutters) would stay wrong. Render on the
+  // client only; native is unaffected.
+  const [mounted, setMounted] = useState(Platform.OS !== 'web');
+  useEffect(() => setMounted(true), []);
   const [fontsLoaded] = useFonts({
     ...MaterialCommunityIcons.font,
     MaterialCommunityIcons: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
@@ -102,6 +108,8 @@ export default function RootLayout() {
     };
   }, []);
 
+  if (!mounted) return null;
+
   const whiteNavTheme = {
     ...DefaultTheme,
     colors: {
@@ -118,6 +126,7 @@ export default function RootLayout() {
     <ThemeProvider value={whiteNavTheme}>
       <PaperProvider theme={customPaperTheme}>
         <StatusBar style="dark" />
+        <AlertHost />
         <AnimatedSplashOverlay />
         <Stack
           screenOptions={{

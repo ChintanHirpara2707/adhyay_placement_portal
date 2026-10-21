@@ -7,7 +7,6 @@ import { C } from "@/theme/design";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-  Alert,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -15,6 +14,8 @@ import {
   StyleSheet,
   View,
 } from "react-native";
+import { NO_ROWS_MESSAGE, showAlert } from "@/lib/alert";
+import { BRANCHES } from "@/constants/branches";
 import {
   ActivityIndicator,
   Button,
@@ -28,24 +29,6 @@ import {
 } from "react-native-paper";
 import { z } from "zod";
 
-const BRANCHES = [
-  "BCA",
-  "MCA",
-  "BSc.IT",
-  "MSc.IT",
-  "BSc.CS",
-  "MSc.CS",
-  "CE",
-  "CSE",
-  "IT",
-  "EE",
-  "ECE",
-  "EEE",
-  "EIE",
-  "AI-DS",
-  "AIML",
-  "CS-BS",
-];
 
 const profileSchema = z.object({
   full_name: z
@@ -53,14 +36,15 @@ const profileSchema = z.object({
     .trim()
     .min(2, { message: "Full name must be at least 2 characters" }),
   branch: z.string().trim().min(1, { message: "Select your branch" }),
+  // An empty field coerces to 0, so require a real value instead of silently saving CGPA 0.
   cgpa: z.coerce
-    .number()
-    .min(0, { message: "CGPA must be at least 0" })
+    .number({ message: "Enter your CGPA as a number" })
+    .gt(0, { message: "Enter your CGPA (greater than 0)" })
     .max(10, { message: "CGPA cannot exceed 10" }),
   phone: z
     .string()
     .trim()
-    .min(10, { message: "Phone number must be at least 10 digits" }),
+    .regex(/^\+?[\d\s-]{10,15}$/, { message: "Enter a valid phone number (10-15 digits)" }),
   backlog_count: z.coerce
     .number()
     .int()
@@ -130,7 +114,7 @@ export default function StudentProfileScreen() {
         .eq("id", user.id)
         .maybeSingle();
       if (error) {
-        Alert.alert("Error", "Failed to fetch profile: " + error.message);
+        showAlert("Error", "Failed to fetch profile: " + error.message);
         return;
       }
       if (data) {
@@ -148,7 +132,7 @@ export default function StudentProfileScreen() {
         setSavedResumeUrl(data.resume_url ?? null);
       }
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Something went wrong.");
+      showAlert("Error", e.message || "Something went wrong.");
     } finally {
       setFetching(false);
     }
@@ -198,7 +182,7 @@ export default function StudentProfileScreen() {
       const resumeUrl = form.resume_link?.trim()
         ? form.resume_link.trim()
         : null;
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("students")
         .update({
           full_name: form.full_name.trim(),
@@ -209,17 +193,18 @@ export default function StudentProfileScreen() {
           skills,
           resume_url: resumeUrl,
         })
-        .eq("id", user.id);
-      if (error) {
-        Alert.alert("Save Error", error.message);
+        .eq("id", user.id)
+        .select("id");
+      if (error || !data || data.length === 0) {
+        showAlert("Save Error", error?.message ?? NO_ROWS_MESSAGE);
         return;
       }
       reset(form);
       setSkillsDirty(false);
       setSavedResumeUrl(resumeUrl);
-      Alert.alert("Saved", "Your profile has been updated.");
+      showAlert("Saved", "Your profile has been updated.");
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Something went wrong.");
+      showAlert("Error", e.message || "Something went wrong.");
     } finally {
       setSaving(false);
     }
@@ -609,7 +594,7 @@ export default function StudentProfileScreen() {
             mode="contained"
             loading={saving}
             disabled={!canSave || saving}
-            onPress={handleSubmit(handleSave)}
+            onPress={handleSubmit(handleSave, () => showAlert("Check your details", "Some fields need attention. Fix the highlighted fields and save again."))}
             buttonColor={Theme.colors.primaryAccent}
             textColor="#FFFFFF"
             style={styles.saveButton}

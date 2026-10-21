@@ -105,6 +105,8 @@ export default function ForgotPasswordScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               placeholder="name@example.com"
+              returnKeyType="go"
+              onSubmitEditing={handleSubmit(onSubmit, onInvalid)}
               left={<TextInput.Icon icon="email-outline" color={C.faint} />}
               onBlur={onBlur}
               onChangeText={onChange}

@@ -1,15 +1,16 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, View, Alert, Dimensions, TouchableOpacity } from 'react-native';
-import { Text } from 'react-native-paper';
+import { StyleSheet, View, Dimensions, TouchableOpacity } from 'react-native';
+import { showAlert } from '@/lib/alert';
+import { Text, Button } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { BarChart } from 'react-native-chart-kit';
 import { MotiView } from 'moti';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { supabase } from '@/lib/supabase';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
 import { Screen } from '@/components/ui/Screen';
-import { Card, SectionHeader, StatCard, EmptyState, ResponsiveGrid } from '@/components/ui/kit';
+import { Card, SectionHeader, EmptyState } from '@/components/ui/kit';
+import { StatSummary } from '@/components/StatSummary';
 import { ActivityFeedItem } from '@/components/ActivityFeedItem';
 import { Skeleton } from '@/components/SkeletonLoader';
 
@@ -26,22 +27,27 @@ export default function AdminDashboardScreen() {
   const [recent, setRecent] = useState<{ id: string; message: string; created_at: string }[]>([]);
 
   const fetchAdminStats = useCallback(async () => {
-    const { count: sCount } = await supabase.from('students').select('id', { count: 'exact', head: true });
-    const { count: cCount } = await supabase.from('companies').select('id', { count: 'exact', head: true });
+    const { count: sCount, error: qErr1 } = await supabase.from('students').select('id', { count: 'exact', head: true });
+    if (qErr1) throw qErr1;
+    const { count: cCount, error: qErr2 } = await supabase.from('companies').select('id', { count: 'exact', head: true });
+    if (qErr2) throw qErr2;
     setTotalStudents(sCount ?? 0);
     setTotalCompanies(cCount ?? 0);
-    const { count: pCount } = await supabase.from('companies').select('id', { count: 'exact', head: true }).eq('approved', false);
+    const { count: pCount, error: qErr3 } = await supabase.from('companies').select('id', { count: 'exact', head: true }).eq('approved', false);
+    if (qErr3) throw qErr3;
     setPendingCount(pCount ?? 0);
   }, []);
 
   const calculatePlacementPercentage = useCallback(async () => {
-    const { data: placedApps } = await supabase
+    const { data: placedApps, error: qErr4 } = await supabase
       .from('applications')
       .select('student_id, job_postings(ctc), students(branch)')
       .eq('status', 'selected');
+    if (qErr4) throw qErr4;
     const list = (placedApps as any[]) ?? [];
     const unique = new Set(list.map((a) => a.student_id));
-    const { count: sCount } = await supabase.from('students').select('id', { count: 'exact', head: true });
+    const { count: sCount, error: qErr5 } = await supabase.from('students').select('id', { count: 'exact', head: true });
+    if (qErr5) throw qErr5;
     const total = sCount ?? 0;
     setPlacementPct(total > 0 ? (unique.size / total) * 100 : 0);
     const ctcs = list.map((a) => Number(a.job_postings?.ctc)).filter((n) => !Number.isNaN(n) && n > 0);
@@ -62,12 +68,13 @@ export default function AdminDashboardScreen() {
   }, [calculatePlacementPercentage]);
 
   const fetchPendingApprovalsCount = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error: qErr6 } = await supabase
       .from('companies')
       .select('id, company_name, created_at')
       .eq('approved', false)
       .order('created_at', { ascending: false })
       .limit(5);
+    if (qErr6) throw qErr6;
     setRecent(
       ((data as any[]) ?? []).map((c) => ({
         id: c.id,
@@ -82,7 +89,7 @@ export default function AdminDashboardScreen() {
       setLoading(true);
       await Promise.all([fetchAdminStats(), fetchBranchWiseChart(), fetchPendingApprovalsCount()]);
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to load dashboard.');
+      showAlert('Error', e.message || 'Failed to load dashboard.');
     } finally {
       setLoading(false);
     }
@@ -101,12 +108,8 @@ export default function AdminDashboardScreen() {
       <TopNavbar title="Dashboard" subtitle="Admin analytics" />
       {loading ? (
         <Screen>
-          <ResponsiveGrid>
-            <Skeleton height={130} borderRadius={14} />
-            <Skeleton height={130} borderRadius={14} />
-            <Skeleton height={130} borderRadius={14} />
-            <Skeleton height={130} borderRadius={14} />
-          </ResponsiveGrid>
+          <Skeleton height={132} borderRadius={14} />
+          <Skeleton height={46} borderRadius={10} />
           <Skeleton height={240} borderRadius={14} />
         </Screen>
       ) : (
@@ -115,32 +118,38 @@ export default function AdminDashboardScreen() {
             <Text style={styles.heading}>Overview</Text>
           </MotiView>
 
-          <ResponsiveGrid>
-            <StatCard label="Students" value={totalStudents} icon="account-multiple" tone="accent" />
-            <StatCard label="Companies" value={totalCompanies} icon="domain" tone="accent" />
-            <StatCard label="Placement" value={`${placementPct.toFixed(1)}%`} icon="chart-bar" tone="success" />
-            <StatCard label="Avg CTC" value={`${avgCtc.toFixed(1)} LPA`} icon="cash" tone="warning" />
-          </ResponsiveGrid>
+          <StatSummary
+            items={[
+              { label: 'Students', value: totalStudents },
+              { label: 'Companies', value: totalCompanies },
+              { label: 'Placement', value: `${placementPct.toFixed(1)}%` },
+              { label: 'Avg CTC', value: `${avgCtc.toFixed(1)} LPA` },
+            ]}
+          />
 
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => router.push('/(admin)/approvals' as any)}
-            accessibilityRole="button"
-            accessibilityLabel={`${pendingCount} companies pending approval. Review now.`}
-          >
-            <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: 100 }}>
-              <View style={styles.pendingCard}>
-                <View style={styles.pendingIcon}>
-                  <MaterialCommunityIcons name="clock-alert-outline" size={20} color={C.warning} />
-                </View>
-                <View style={styles.pendingText}>
-                  <Text style={styles.pendingTitle}>{pendingCount} {pendingCount === 1 ? 'company' : 'companies'} pending approval</Text>
-                  <Text style={styles.pendingSub}>Review registrations to let them post drives.</Text>
-                </View>
-                <MaterialCommunityIcons name="chevron-right" size={22} color={C.muted} />
-              </View>
-            </MotiView>
-          </TouchableOpacity>
+          <View style={styles.actionRow}>
+            <Button
+              mode="contained"
+              icon="check-decagram-outline"
+              buttonColor={C.accent}
+              textColor="#FFFFFF"
+              style={styles.actionBtn}
+              contentStyle={styles.actionContent}
+              onPress={() => router.push('/(admin)/approvals' as any)}
+            >
+              {pendingCount > 0 ? `Review approvals (${pendingCount})` : 'Review approvals'}
+            </Button>
+            <Button
+              mode="outlined"
+              icon="bullhorn-outline"
+              textColor={C.accent}
+              style={[styles.actionBtn, styles.actionOutline]}
+              contentStyle={styles.actionContent}
+              onPress={() => router.push('/(admin)/broadcast' as any)}
+            >
+              Send broadcast
+            </Button>
+          </View>
 
           <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400, delay: 180 }}>
             <Card>
@@ -194,11 +203,10 @@ export default function AdminDashboardScreen() {
 const styles = StyleSheet.create({
   shell: { flex: 1, backgroundColor: C.paper },
   heading: { fontSize: 26, fontWeight: '700', color: C.ink, letterSpacing: -0.5 },
-  pendingCard: { backgroundColor: C.warningSoft, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  pendingIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' },
-  pendingText: { flex: 1, minWidth: 0 },
-  pendingTitle: { fontWeight: '600', fontSize: 15, color: C.ink },
-  pendingSub: { fontSize: 13, color: C.muted, marginTop: 2 },
+  actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  actionBtn: { flexGrow: 1, flexBasis: 160, borderRadius: 10 },
+  actionOutline: { borderColor: C.line },
+  actionContent: { minHeight: 46 },
   chart: { borderRadius: 14, alignSelf: 'center', marginTop: 8 },
   linkBtn: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
   link: { color: C.accent, fontWeight: '600', fontSize: 14 },

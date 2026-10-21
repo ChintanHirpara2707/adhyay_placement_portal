@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { StyleSheet, View, FlatList, Alert, RefreshControl } from 'react-native';
+import { StyleSheet, View, FlatList, RefreshControl } from 'react-native';
+import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
 import { Text, Button } from 'react-native-paper';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '@/lib/supabase';
@@ -39,13 +40,13 @@ export default function NotificationsScreen() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        Alert.alert('Error', 'Failed to retrieve notifications: ' + error.message);
+        showAlert('Error', 'Failed to retrieve notifications: ' + error.message);
         return;
       }
 
       setNotifications(data || []);
     } catch (e: any) {
-      Alert.alert('Unexpected Error', e.message || 'Something went wrong.');
+      showAlert('Unexpected Error', e.message || 'Something went wrong.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -62,13 +63,14 @@ export default function NotificationsScreen() {
     if (notification.read) return;
 
     try {
-      const { error } = await supabase
+      const { data: rows, error } = await supabase
         .from('notifications')
         .update({ read: true })
-        .eq('id', notification.id);
+        .eq('id', notification.id)
+        .select('id');
 
-      if (error) {
-        Alert.alert('Error', 'Failed to mark notification as read: ' + error.message);
+      if (error || !rows || rows.length === 0) {
+        showAlert('Error', 'Failed to mark notification as read: ' + (error?.message ?? NO_ROWS_MESSAGE));
         return;
       }
 
@@ -76,7 +78,7 @@ export default function NotificationsScreen() {
         prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
       );
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Something went wrong.');
+      showAlert('Error', e.message || 'Something went wrong.');
     }
   };
 
@@ -84,9 +86,14 @@ export default function NotificationsScreen() {
     if (!user) return;
     const unread = notifications.filter((n) => !n.read);
     if (unread.length === 0) return;
-    const { error } = await supabase.from('notifications').update({ read: true }).eq('user_id', user.id).eq('read', false);
-    if (error) {
-      Alert.alert('Error', 'Failed to mark all as read: ' + error.message);
+    const { data: rows, error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', user.id)
+      .eq('read', false)
+      .select('id');
+    if (error || !rows || rows.length === 0) {
+      showAlert('Error', 'Failed to mark all as read: ' + (error?.message ?? NO_ROWS_MESSAGE));
       return;
     }
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));

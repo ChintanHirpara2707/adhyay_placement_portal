@@ -18,8 +18,11 @@ import {
   View,
 } from "react-native";
 import { NO_ROWS_MESSAGE, showAlert } from "@/lib/alert";
+import { useLoadState } from "@/hooks/useLoadState";
+import { useScreenReady } from "@/hooks/useScreenReady";
+import { FormSkeleton } from "@/components/loading/FormSkeleton";
+import { LoadError } from "@/components/loading/LoadError";
 import {
-  Button,
   Card,
   Chip,
   HelperText,
@@ -27,6 +30,7 @@ import {
   Text,
   TextInput,
 } from "react-native-paper";
+import { Button } from "@/components/ui/AppButton";
 import { z } from "zod";
 
 const PRESET_TIME_SLOTS = [
@@ -68,7 +72,8 @@ export default function ApplicantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
-  const [loading, setLoading] = useState(true);
+  const { loading, error: loadError, begin, succeed, fail, end } = useLoadState('this applicant');
+  useScreenReady(!loading);
   const [scheduling, setScheduling] = useState(false);
   const [mode, setMode] = useState<"online" | "offline">("online");
   const [app, setApp] = useState<any>(null);
@@ -94,8 +99,8 @@ export default function ApplicantDetailScreen() {
 
   const fetchStudentDetail = useCallback(async () => {
     if (!id || !user) return;
+    begin();
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .from("applications")
         .select(
@@ -136,12 +141,13 @@ export default function ApplicantDetailScreen() {
       } else {
         setRoundInterviews((ivs as any[]) ?? []);
       }
+      succeed();
     } catch (e: any) {
-      showAlert("Error", e.message || "Failed to load applicant.");
+      fail(e);
     } finally {
-      setLoading(false);
+      end();
     }
-  }, [id, user, router]);
+  }, [id, user, router, begin, succeed, fail, end]);
 
   useFocusEffect(
     useCallback(() => {
@@ -424,9 +430,9 @@ export default function ApplicantDetailScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.muted}>Loading applicant profile…</Text>
-          </View>
+          <FormSkeleton withHeader cards={2} fields={2} />
+        ) : loadError ? (
+          <LoadError message={loadError} onRetry={fetchStudentDetail} />
         ) : !app ? (
           <View style={styles.loadingContainer}>
             <Text style={styles.muted}>Applicant record not found.</Text>

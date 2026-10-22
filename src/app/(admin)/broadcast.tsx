@@ -1,7 +1,11 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { StyleSheet, View, RefreshControl } from 'react-native';
 import { showAlert } from '@/lib/alert';
-import { Text, Button, TextInput, SegmentedButtons } from 'react-native-paper';
+import { useScreenReady } from '@/hooks/useScreenReady';
+import { SectionLoader } from '@/components/loading/SectionLoader';
+import { LoadError } from '@/components/loading/LoadError';
+import { Text, TextInput, SegmentedButtons } from 'react-native-paper';
+import { Button } from '@/components/ui/AppButton';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { C } from '@/theme/design';
@@ -18,6 +22,9 @@ export default function AdminBroadcastScreen() {
   const sendingRef = useRef(false);
   const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  useScreenReady(!historyLoading);
   const [history, setHistory] = useState<{ id: string; message: string; created_at: string; count: number }[]>([]);
 
   const fetchBroadcastHistory = useCallback(async () => {
@@ -27,9 +34,10 @@ export default function AdminBroadcastScreen() {
       .order('created_at', { ascending: false })
       .limit(300);
     if (error) {
-      showAlert('Could not load history', error.message);
+      setHistoryError(error.message);
       return;
     }
+    setHistoryError(null);
     // A broadcast stores one row per student; collapse identical messages sent together into one entry.
     const groups = new Map<string, { id: string; message: string; created_at: string; count: number }>();
     for (const n of (data as any[]) ?? []) {
@@ -47,6 +55,7 @@ export default function AdminBroadcastScreen() {
       try {
         await fetchBroadcastHistory();
       } finally {
+        setHistoryLoading(false);
         if (isRefresh) setRefreshing(false);
       }
     },
@@ -149,7 +158,11 @@ export default function AdminBroadcastScreen() {
 
         <View style={styles.column}><SectionHeader title="Recent notifications" /></View>
         <Card style={styles.column}>
-          {history.length === 0 ? (
+          {historyLoading ? (
+            <SectionLoader label="Loading notifications…" />
+          ) : historyError ? (
+            <LoadError message={historyError} onRetry={() => load()} title="Could not load history" />
+          ) : history.length === 0 ? (
             <EmptyState icon="bullhorn-outline" title="Nothing sent yet" hint="Your broadcasts will appear here." />
           ) : (
             history.map((h) => (

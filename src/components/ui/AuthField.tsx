@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Button, HelperText, Text, TextInput } from 'react-native-paper';
+import { HelperText, Text, TextInput } from 'react-native-paper';
+import { Button } from '@/components/ui/AppButton';
 import { C, R } from '@/theme/design';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 

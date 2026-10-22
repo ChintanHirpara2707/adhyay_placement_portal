@@ -1,7 +1,12 @@
+import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, View, RefreshControl, TouchableOpacity } from 'react-native';
-import { showAlert } from '@/lib/alert';
-import { Text, Button } from 'react-native-paper';
+import { useLoadState } from '@/hooks/useLoadState';
+import { useScreenReady } from '@/hooks/useScreenReady';
+import { Skeleton, SkeletonCard, SkeletonList } from '@/components/loading/Skeleton';
+import { LoadError } from '@/components/loading/LoadError';
+import { Text } from 'react-native-paper';
+import { Button } from '@/components/ui/AppButton';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { MotiView } from 'moti';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -14,11 +19,31 @@ import { Card, SectionHeader, EmptyState } from '@/components/ui/kit';
 import { StatSummary } from '@/components/StatSummary';
 import { ActivityFeedItem } from '@/components/ActivityFeedItem';
 
+/** Matches the approved dashboard: heading, summary, action buttons, recent activity. */
+function CompanyDashboardSkeleton() {
+  return (
+    <>
+      <View style={{ gap: 6 }}>
+        <Skeleton width={200} height={28} />
+        <Skeleton width={230} height={16} />
+      </View>
+      <SkeletonCard variant="stat" />
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Skeleton height={46} borderRadius={10} style={{ flex: 1 }} />
+        <Skeleton height={46} borderRadius={10} style={{ flex: 1 }} />
+      </View>
+      <Skeleton width={150} height={20} />
+      <SkeletonList count={2} variant="notification" />
+    </>
+  );
+}
+
 export default function CompanyDashboard() {
   const router = useRouter();
+  const nav = useSafeNavigate();
   const { user } = useAuthStore();
-  const [checking, setChecking] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { loading, refreshing, error: loadError, begin, succeed, fail, end } = useLoadState('your dashboard');
+  useScreenReady(!loading);
   const [approved, setApproved] = useState<boolean | null>(null);
   const [companyName, setCompanyName] = useState('');
   const [activeJobs, setActiveJobs] = useState(0);
@@ -29,10 +54,7 @@ export default function CompanyDashboard() {
   const checkApprovalStatus = useCallback(async () => {
     if (!user) return false;
     const { data, error } = await supabase.from('companies').select('approved, company_name').eq('id', user.id).maybeSingle();
-    if (error) {
-      showAlert('Error', 'Failed to retrieve company status: ' + error.message);
-      return false;
-    }
+    if (error) throw error;
     setApproved((data as any)?.approved ?? false);
     setCompanyName((data as any)?.company_name ?? '');
     return (data as any)?.approved === true;
@@ -83,19 +105,18 @@ export default function CompanyDashboard() {
 
   const loadAll = useCallback(
     async (isRefresh = false) => {
-      if (isRefresh) setRefreshing(true);
-      else setChecking(true);
+      begin(isRefresh);
       try {
         const ok = await checkApprovalStatus();
         if (ok) await Promise.all([fetchCompanyStats(), fetchRecentActivity()]);
+        succeed();
       } catch (e: any) {
-        showAlert('Could not load your dashboard', e?.message || 'Something went wrong. Pull down to retry.');
+        fail(e);
       } finally {
-        setChecking(false);
-        setRefreshing(false);
+        end();
       }
     },
-    [checkApprovalStatus, fetchCompanyStats, fetchRecentActivity]
+    [checkApprovalStatus, fetchCompanyStats, fetchRecentActivity, begin, succeed, fail, end]
   );
 
   useFocusEffect(
@@ -110,8 +131,10 @@ export default function CompanyDashboard() {
       <Screen
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadAll(true)} tintColor={C.accent} />}
       >
-        {checking ? (
-          <Text style={styles.loading}>Verifying company account…</Text>
+        {loading ? (
+          <CompanyDashboardSkeleton />
+        ) : loadError ? (
+          <LoadError message={loadError} onRetry={() => loadAll()} />
         ) : approved === false ? (
           <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300 }}>
             <Card>
@@ -151,7 +174,7 @@ export default function CompanyDashboard() {
                 style={styles.actionBtn}
                 contentStyle={styles.postBtnContent}
                 labelStyle={styles.postBtnLabel}
-                onPress={() => router.push('/(company)/post-job' as any)}
+                onPress={() => nav.push('/(company)/post-job' as any)}
               >
                 Post a job
               </Button>
@@ -162,7 +185,7 @@ export default function CompanyDashboard() {
                 style={[styles.actionBtn, styles.actionOutline]}
                 contentStyle={styles.postBtnContent}
                 labelStyle={styles.postBtnLabel}
-                onPress={() => router.push('/(company)/my-jobs' as any)}
+                onPress={() => nav.push('/(company)/my-jobs' as any)}
               >
                 View my jobs
               </Button>
@@ -172,7 +195,7 @@ export default function CompanyDashboard() {
               action={
                 <TouchableOpacity
                   style={styles.linkBtn}
-                  onPress={() => router.push('/(company)/my-jobs' as any)}
+                  onPress={() => nav.push('/(company)/my-jobs' as any)}
                   accessibilityRole="link"
                   accessibilityLabel="Go to my jobs"
                 >

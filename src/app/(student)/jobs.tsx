@@ -1,6 +1,11 @@
+import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, View, FlatList, RefreshControl } from 'react-native';
 import { showAlert } from '@/lib/alert';
+import { useLoadState } from '@/hooks/useLoadState';
+import { useScreenReady } from '@/hooks/useScreenReady';
+import { SkeletonList } from '@/components/loading/Skeleton';
+import { LoadError } from '@/components/loading/LoadError';
 import { Text, Button, Banner, Searchbar } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '@/lib/supabase';
@@ -28,10 +33,11 @@ interface JobPosting {
 
 export default function StudentJobsScreen() {
   const router = useRouter();
+  const nav = useSafeNavigate();
   const { user } = useAuthStore();
   const { dismissedIds } = useFeedStore();
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { loading, refreshing, error: loadError, begin, succeed, fail, end } = useLoadState('jobs');
+  useScreenReady(!loading);
   const [jobs, setJobs] = useState<JobPosting[]>([]);
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [query, setQuery] = useState('');
@@ -76,18 +82,17 @@ export default function StudentJobsScreen() {
     [...list].sort((a, b) => parseDbDate(a.deadline).getTime() - parseDbDate(b.deadline).getTime());
 
   const navigateToJobDetail = (id: string) => {
-    router.push({ pathname: '/(student)/job/[id]' as any, params: { id } });
+    nav.push({ pathname: '/(student)/job/[id]' as any, params: { id } });
   };
 
   const loadData = async (isRefresh = false) => {
     if (!user) return;
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    try {
+    begin(isRefresh);try {
       const student = await fetchStudentProfile();
       if (!student || student.cgpa == null || !student.branch) {
         setProfileIncomplete(true);
         setJobs([]);
+        succeed();
         return;
       }
       setProfileIncomplete(false);
@@ -95,11 +100,11 @@ export default function StudentJobsScreen() {
       const filtered = filterJobsByEligibility(openJobs, student);
       const sorted = sortJobsByDeadline(filtered);
       setJobs(sorted.map((j) => ({ ...j, isApplied: appliedIds.has(j.id) })));
+      succeed();
     } catch (e: any) {
-      showAlert('Error', e.message || 'Failed to load jobs.');
+      fail(e);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      end();
     }
   };
 
@@ -125,7 +130,7 @@ export default function StudentJobsScreen() {
       <TopNavbar title="Job Feed" subtitle="Eligible opportunities" />
       <Banner
         visible={profileIncomplete}
-        actions={[{ label: 'Complete Profile', onPress: () => router.push('/(student)/profile' as any) }]}
+        actions={[{ label: 'Complete Profile', onPress: () => nav.push('/(student)/profile' as any) }]}
         icon="alert-circle"
       >
         Your profile is incomplete. Add CGPA and branch to see matching jobs.
@@ -148,9 +153,11 @@ export default function StudentJobsScreen() {
       </Text>
       {loading ? (
         <View style={styles.listContainer}>
-          <JobCardSkeleton />
-          <JobCardSkeleton />
-          <JobCardSkeleton />
+          <SkeletonList count={3} variant="job" />
+        </View>
+      ) : loadError ? (
+        <View style={styles.listContainer}>
+          <LoadError message={loadError} onRetry={() => loadData()} />
         </View>
       ) : (
         <FlatList

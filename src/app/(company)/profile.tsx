@@ -1,7 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
-import { TextInput, Button, Text, ActivityIndicator } from 'react-native-paper';
+import { useLoadState } from '@/hooks/useLoadState';
+import { useScreenReady } from '@/hooks/useScreenReady';
+import { FormSkeleton } from '@/components/loading/FormSkeleton';
+import { LoadError } from '@/components/loading/LoadError';
+import { TextInput, Text } from 'react-native-paper';
+import { Button } from '@/components/ui/AppButton';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
@@ -32,7 +37,8 @@ const resolver = (data: CompanyForm) => {
 
 export default function CompanyProfileScreen() {
   const { user } = useAuthStore();
-  const [fetching, setFetching] = useState(true);
+  const { loading: fetching, error: loadError, begin, succeed, fail, end } = useLoadState('your profile');
+  useScreenReady(!fetching);
   const [saving, setSaving] = useState(false);
   const [approved, setApproved] = useState<boolean | null>(null);
 
@@ -41,24 +47,27 @@ export default function CompanyProfileScreen() {
     defaultValues: { company_name: '', description: '', website: '' },
   });
 
-  useEffect(() => {
+  const loadProfile = useCallback(async () => {
     if (!user) return;
-    (async () => {
-      try {
-        const { data, error } = await supabase.from('companies').select('company_name, description, website, approved').eq('id', user.id).maybeSingle();
-        if (error) {
-          showAlert('Error', 'Failed to fetch company profile: ' + error.message);
-          return;
-        }
-        if (data) {
-          reset({ company_name: (data as any).company_name ?? '', description: (data as any).description ?? '', website: (data as any).website ?? '' });
-          setApproved((data as any).approved ?? false);
-        }
-      } finally {
-        setFetching(false);
+    begin();
+    try {
+      const { data, error } = await supabase.from('companies').select('company_name, description, website, approved').eq('id', user.id).maybeSingle();
+      if (error) throw error;
+      if (data) {
+        reset({ company_name: (data as any).company_name ?? '', description: (data as any).description ?? '', website: (data as any).website ?? '' });
+        setApproved((data as any).approved ?? false);
       }
-    })();
-  }, [user, reset]);
+      succeed();
+    } catch (e: any) {
+      fail(e);
+    } finally {
+      end();
+    }
+  }, [user, reset, begin, succeed, fail, end]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
 
   const onSave = async (form: CompanyForm) => {
     if (!user) return;
@@ -80,10 +89,13 @@ export default function CompanyProfileScreen() {
     }
   };
 
-  if (fetching) {
+  if (fetching || loadError) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={C.accent} />
+      <View style={styles.container}>
+        <TopNavbar title="Profile" subtitle="Company details" />
+        <Screen>
+          {fetching ? <FormSkeleton cards={1} fields={3} withHeader /> : <LoadError message={loadError} onRetry={loadProfile} />}
+        </Screen>
       </View>
     );
   }

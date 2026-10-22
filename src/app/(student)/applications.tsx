@@ -1,6 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { StyleSheet, View, FlatList, RefreshControl } from 'react-native';
 import { showAlert } from '@/lib/alert';
+import { useLoadState } from '@/hooks/useLoadState';
+import { useScreenReady } from '@/hooks/useScreenReady';
+import { SkeletonList } from '@/components/loading/Skeleton';
+import { LoadError } from '@/components/loading/LoadError';
 import { Text } from 'react-native-paper';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '@/lib/supabase';
@@ -35,18 +39,14 @@ interface Application {
 
 export default function ApplicationsScreen() {
   const { user } = useAuthStore();
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { loading, refreshing, error: loadError, begin, succeed, fail, end } = useLoadState('applications');
+  useScreenReady(!loading);
   const [applications, setApplications] = useState<Application[]>([]);
   const [filter, setFilter] = useState<'all' | 'active' | 'selected' | 'rejected' | 'round_cleared'>('all');
 
   const fetchStudentApplications = async (isRefresh = false) => {
     if (!user) return;
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
+    begin(isRefresh);
 
     try {
       const { data, error } = await supabase
@@ -66,17 +66,14 @@ export default function ApplicationsScreen() {
         .eq('student_id', user.id)
         .order('applied_at', { ascending: false });
 
-      if (error) {
-        showAlert('Error', 'Failed to retrieve applications: ' + error.message);
-        return;
-      }
+      if (error) throw error;
 
       setApplications(data as any[] || []);
+      succeed();
     } catch (e: any) {
-      showAlert('Unexpected Error', e.message || 'Something went wrong.');
+      fail(e);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      end();
     }
   };
 
@@ -123,8 +120,11 @@ export default function ApplicationsScreen() {
 
       {loading ? (
         <View style={styles.listContainer}>
-          <JobCardSkeleton />
-          <JobCardSkeleton />
+          <SkeletonList count={2} variant="application" />
+        </View>
+      ) : loadError ? (
+        <View style={styles.listContainer}>
+          <LoadError message={loadError} onRetry={() => fetchStudentApplications()} />
         </View>
       ) : (
         <FlatList

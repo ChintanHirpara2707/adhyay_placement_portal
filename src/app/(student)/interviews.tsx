@@ -6,7 +6,8 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useAuthStore } from '@/store/authStore';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
-import { JobCardSkeleton } from '@/components/SkeletonLoader';
+import { SkeletonList } from '@/components/loading/Skeleton';
+import { useScreenReady } from '@/hooks/useScreenReady';
 import { StatusChip, PageHeader, EmptyState, ErrorState, pageColumn } from '@/components/ui/kit';
 import { formatDateTime } from '@/lib/format';
 import { fetchStudentInterviews, splitInterviews, StudentInterview } from '@/lib/interviews';
@@ -23,6 +24,7 @@ export default function StudentInterviewsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState('upcoming');
   const [interviews, setInterviews] = useState<StudentInterview[]>([]);
+  useScreenReady(!loading);
 
   const load = useCallback(
     async (isRefresh = false) => {
@@ -68,8 +70,7 @@ export default function StudentInterviewsScreen() {
       </View>
       {loading ? (
         <View style={styles.list}>
-          <JobCardSkeleton />
-          <JobCardSkeleton />
+          <SkeletonList count={3} variant="interview" />
         </View>
       ) : error ? (
         <View style={styles.list}>

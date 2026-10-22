@@ -1,3 +1,4 @@
+import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 import { TopNavbar } from '@/components/TopNavbar';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
@@ -8,7 +9,8 @@ import { useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
-import { Button, Card, HelperText, Switch, Text, TextInput } from 'react-native-paper';
+import { Card, HelperText, Switch, Text, TextInput } from 'react-native-paper';
+import { Button } from '@/components/ui/AppButton';
 import { z } from 'zod';
 import { DateField } from '@/components/DateField';
 import { BranchPicker } from '@/components/ui/BranchPicker';
@@ -84,6 +86,7 @@ const postJobResolver = (data: PostJobFormData) => {
 
 export default function PostJobScreen() {
   const router = useRouter();
+  const nav = useSafeNavigate();
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -197,7 +200,7 @@ export default function PostJobScreen() {
 
       // The tab navigator keeps this screen mounted, so clear the form or a stale copy could be published twice.
       reset();
-      router.replace('/(company)/my-jobs' as any);
+      nav.replace('/(company)/my-jobs' as any);
     } catch (e: any) {
       showAlert('Unexpected Error', e.message || 'Something went wrong.');
     } finally {

@@ -10,7 +10,7 @@ import { useAuthStore, UserRole } from '@/store/authStore';
  */
 export function useRoleGuard(expected: UserRole) {
   const router = useRouter();
-  const { session, loading, setRole } = useAuthStore();
+  const { session, loading, setRole, setNeedsRole } = useAuthStore();
 
   useEffect(() => {
     if (loading) return;
@@ -27,10 +27,16 @@ export function useRoleGuard(expected: UserRole) {
         .maybeSingle();
       if (cancelled) return;
       const liveRole = (data as any)?.role as UserRole | null;
-      if (error || !liveRole) {
-        console.warn('[role-guard] no live role, signing out');
+      if (error) {
+        console.warn('[role-guard] role lookup failed, signing out:', error.message);
         await supabase.auth.signOut().catch(() => {});
         router.replace('/(auth)/login' as any);
+        return;
+      }
+      if (!liveRole) {
+        // Signed in but no users row (first Google sign-in): the only place they may be is choose-role.
+        setNeedsRole(true);
+        router.replace('/(auth)/choose-role' as any);
         return;
       }
       setRole(liveRole);
@@ -44,5 +50,5 @@ export function useRoleGuard(expected: UserRole) {
     return () => {
       cancelled = true;
     };
-  }, [loading, session, expected, router, setRole]);
+  }, [loading, session, expected, router, setRole, setNeedsRole]);
 }

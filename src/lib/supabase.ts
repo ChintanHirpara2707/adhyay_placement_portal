@@ -9,6 +9,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: Platform.OS === 'web',
     autoRefreshToken: true,
-    detectSessionInUrl: false,
+    // Google OAuth: PKCE everywhere. On web the browser returns to the app with ?code=..., which the
+    // client exchanges automatically. On native the code is read from the auth-session result and
+    // exchanged explicitly (see src/lib/googleAuth.ts), so URL detection stays off there.
+    flowType: 'pkce',
+    detectSessionInUrl: Platform.OS === 'web',
   },
 });

@@ -15,10 +15,12 @@ import {
   View,
 } from "react-native";
 import { NO_ROWS_MESSAGE, showAlert } from "@/lib/alert";
+import { useLoadState } from "@/hooks/useLoadState";
+import { useScreenReady } from "@/hooks/useScreenReady";
+import { FormSkeleton } from "@/components/loading/FormSkeleton";
+import { LoadError } from "@/components/loading/LoadError";
 import { BRANCHES } from "@/constants/branches";
 import {
-  ActivityIndicator,
-  Button,
   Card,
   Chip,
   HelperText,
@@ -27,6 +29,7 @@ import {
   Text,
   TextInput,
 } from "react-native-paper";
+import { Button } from "@/components/ui/AppButton";
 import { z } from "zod";
 
 
@@ -74,7 +77,8 @@ const profileResolver = (data: ProfileFormData) => {
 
 export default function StudentProfileScreen() {
   const { user } = useAuthStore();
-  const [fetching, setFetching] = useState(true);
+  const { loading: fetching, error: loadError, begin, succeed, fail, end } = useLoadState('your profile');
+  useScreenReady(!fetching);
   const [saving, setSaving] = useState(false);
   const [savedResumeUrl, setSavedResumeUrl] = useState<string | null>(null);
   const [skills, setSkills] = useState<string[]>([]);
@@ -107,16 +111,14 @@ export default function StudentProfileScreen() {
 
   const fetchExistingProfile = async () => {
     if (!user) return;
+    begin();
     try {
       const { data, error } = await supabase
         .from("students")
         .select("*")
         .eq("id", user.id)
         .maybeSingle();
-      if (error) {
-        showAlert("Error", "Failed to fetch profile: " + error.message);
-        return;
-      }
+      if (error) throw error;
       if (data) {
         const vals: ProfileFormData = {
           full_name: data.full_name ?? "",
@@ -131,10 +133,11 @@ export default function StudentProfileScreen() {
         setSkillsDirty(false);
         setSavedResumeUrl(data.resume_url ?? null);
       }
+      succeed();
     } catch (e: any) {
-      showAlert("Error", e.message || "Something went wrong.");
+      fail(e);
     } finally {
-      setFetching(false);
+      end();
     }
   };
 
@@ -212,11 +215,13 @@ export default function StudentProfileScreen() {
 
   const canSave = isDirty || skillsDirty;
 
-  if (fetching) {
+  if (fetching || loadError) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={Theme.colors.primaryAccent} />
-        <Text style={styles.muted}>Loading placement profile…</Text>
+      <View style={styles.container}>
+        <TopNavbar title="Candidate Profile" subtitle="Campus Placement & Drive Record" />
+        <ScrollView contentContainerStyle={styles.body}>
+          {fetching ? <FormSkeleton withHeader cards={3} fields={2} /> : <LoadError message={loadError} onRetry={fetchExistingProfile} />}
+        </ScrollView>
       </View>
     );
   }

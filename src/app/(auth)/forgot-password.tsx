@@ -1,3 +1,4 @@
+import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { TextInput, Text } from 'react-native-paper';
@@ -28,6 +29,7 @@ const forgotResolver = (data: ForgotFormData) => {
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const nav = useSafeNavigate();
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -78,7 +80,7 @@ export default function ForgotPasswordScreen() {
       setToast({ visible: true, message: 'OTP sent to your email.', type: 'success' });
       // Navigate immediately — do not gate the transition on an alert
       // dismissal (alerts behave inconsistently across web/native).
-      router.push({ pathname: '/(auth)/verify-otp' as any, params: { email, sent: '1' } });
+      nav.push({ pathname: '/(auth)/verify-otp' as any, params: { email, sent: '1' } });
     } catch (e: any) {
       console.warn('[forgot] unexpected error:', e?.message);
       setSubmitError(e.message || 'Something went wrong.');

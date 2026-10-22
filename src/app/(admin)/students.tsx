@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, ScrollView } from 'react-native';
+import { StyleSheet, View, ScrollView, RefreshControl } from 'react-native';
 import { showAlert } from '@/lib/alert';
-import { Text, TextInput, ActivityIndicator } from 'react-native-paper';
+import { useLoadState } from '@/hooks/useLoadState';
+import { useScreenReady } from '@/hooks/useScreenReady';
+import { SkeletonList } from '@/components/loading/Skeleton';
+import { LoadError } from '@/components/loading/LoadError';
+import { Text, TextInput } from 'react-native-paper';
 import { supabase } from '@/lib/supabase';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
@@ -22,14 +26,15 @@ interface Student {
 }
 
 export default function StudentsScreen() {
-  const [loading, setLoading] = useState(true);
+  const { loading, refreshing, error: loadError, begin, succeed, fail, end } = useLoadState('students');
+  useScreenReady(!loading);
   const [students, setStudents] = useState<Student[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [placedIds, setPlacedIds] = useState<Set<string>>(new Set());
 
-  const fetchAllStudents = async () => {
+  const fetchAllStudents = async (isRefresh = false) => {
+    begin(isRefresh);
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .from('students')
         .select(`
@@ -45,19 +50,17 @@ export default function StudentsScreen() {
           )
         `);
 
-      if (error) {
-        showAlert('Error', 'Failed to retrieve student directory: ' + error.message);
-        return;
-      }
+      if (error) throw error;
 
       setStudents(data as any[] || []);
       const { data: placed, error: qErr1 } = await supabase.from('applications').select('student_id').eq('status', 'selected');
       if (qErr1) throw qErr1;
       setPlacedIds(new Set(((placed as any[]) ?? []).map((p) => p.student_id)));
+      succeed();
     } catch (e: any) {
-      showAlert('Unexpected Error', e.message || 'Something went wrong.');
+      fail(e);
     } finally {
-      setLoading(false);
+      end();
     }
   };
 
@@ -75,15 +78,6 @@ export default function StudentsScreen() {
 
   // Client-side search logic
   const filteredStudents = searchFilter(students);
-
-  if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={C.accent} />
-        <Text style={styles.loadingText}>Fetching student directory...</Text>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
@@ -103,7 +97,16 @@ export default function StudentsScreen() {
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.listContainer}>
+      {loading ? (
+        <View style={styles.listContainer}>
+          <SkeletonList count={3} variant="application" />
+        </View>
+      ) : loadError ? (
+        <View style={styles.listContainer}>
+          <LoadError message={loadError} onRetry={() => fetchAllStudents()} />
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.listContainer} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchAllStudents(true)} tintColor={C.accent} />}>
         <DataTable
           columns={[
             {
@@ -145,6 +148,7 @@ export default function StudentsScreen() {
           <EmptyState icon="account-search-outline" title="No students found" hint="Try a different search." />
         ) : null}
       </ScrollView>
+      )}
     </View>
   );
 }

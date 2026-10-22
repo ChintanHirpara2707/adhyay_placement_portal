@@ -1,6 +1,10 @@
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, View, FlatList, RefreshControl } from 'react-native';
 import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
+import { useLoadState } from '@/hooks/useLoadState';
+import { useScreenReady } from '@/hooks/useScreenReady';
+import { SkeletonList } from '@/components/loading/Skeleton';
+import { LoadError } from '@/components/loading/LoadError';
 import { Text, Button } from 'react-native-paper';
 import { Skeleton } from '@/components/SkeletonLoader';
 import { useFocusEffect } from 'expo-router';
@@ -20,30 +24,25 @@ interface Notification {
 
 export default function CompanyNotificationsScreen() {
   const { user } = useAuthStore();
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { loading, refreshing, error: loadError, begin, succeed, fail, end } = useLoadState('notifications');
+  useScreenReady(!loading);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const fetchNotifications = async (isRefresh = false) => {
     if (!user) return;
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    try {
+    begin(isRefresh);try {
       const { data, error } = await supabase
         .from('notifications')
         .select('id, message, read, created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-      if (error) {
-        showAlert('Error', 'Failed to retrieve notifications: ' + error.message);
-        return;
-      }
+      if (error) throw error;
       setNotifications(data || []);
+      succeed();
     } catch (e: any) {
-      showAlert('Unexpected Error', e.message || 'Something went wrong.');
+      fail(e);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      end();
     }
   };
 
@@ -124,8 +123,11 @@ export default function CompanyNotificationsScreen() {
       </View>
       {loading ? (
         <View style={styles.listContainer}>
-          <Skeleton height={70} borderRadius={14} style={{ marginBottom: 10 }} />
-          <Skeleton height={70} borderRadius={14} style={{ marginBottom: 10 }} />
+          <SkeletonList count={4} variant="notification" />
+        </View>
+      ) : loadError && notifications.length === 0 ? (
+        <View style={styles.listContainer}>
+          <LoadError message={loadError} onRetry={() => fetchNotifications()} />
         </View>
       ) : notifications.length === 0 ? (
         <EmptyState icon="bell-off-outline" title="All caught up" hint="You have no notifications at this time." />

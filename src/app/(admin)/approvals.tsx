@@ -1,7 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, FlatList } from 'react-native';
+import { StyleSheet, View, FlatList, RefreshControl } from 'react-native';
 import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
-import { Text, Button, ActivityIndicator } from 'react-native-paper';
+import { useLoadState } from '@/hooks/useLoadState';
+import { useScreenReady } from '@/hooks/useScreenReady';
+import { SkeletonList } from '@/components/loading/Skeleton';
+import { LoadError } from '@/components/loading/LoadError';
+import { Text } from 'react-native-paper';
+import { Button } from '@/components/ui/AppButton';
 import { supabase } from '@/lib/supabase';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
@@ -18,12 +23,13 @@ interface PendingCompany {
 }
 
 export default function ApprovalsScreen() {
-  const [loading, setLoading] = useState(true);
+  const { loading, refreshing, error: loadError, begin, succeed, fail, end } = useLoadState('approvals');
+  useScreenReady(!loading);
   const [companies, setCompanies] = useState<PendingCompany[]>([]);
 
-  const fetchPendingCompanies = async () => {
+  const fetchPendingCompanies = async (isRefresh = false) => {
+    begin(isRefresh);
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .from('companies')
         .select(`
@@ -37,16 +43,14 @@ export default function ApprovalsScreen() {
         `)
         .eq('approved', false);
 
-      if (error) {
-        showAlert('Error', 'Failed to fetch pending companies: ' + error.message);
-        return;
-      }
+      if (error) throw error;
 
       setCompanies(data as any[] || []);
+      succeed();
     } catch (e: any) {
-      showAlert('Unexpected Error', e.message || 'Something went wrong.');
+      fail(e);
     } finally {
-      setLoading(false);
+      end();
     }
   };
 
@@ -57,15 +61,23 @@ export default function ApprovalsScreen() {
   // Company ids with a decision in flight (ref = instant guard against double taps).
   const busyRef = useRef<Set<string>>(new Set());
   const [busyIds, setBusyIds] = useState<string[]>([]);
-  const setBusy = (id: string, on: boolean) => {
+  // Which action is running per id, so only the pressed button shows its spinner.
+  const [busyKinds, setBusyKinds] = useState<Record<string, string>>({});
+  const setBusy = (id: string, on: boolean, kind?: string) => {
     if (on) busyRef.current.add(id);
     else busyRef.current.delete(id);
     setBusyIds(Array.from(busyRef.current));
+    setBusyKinds((prev) => {
+      const next = { ...prev };
+      if (on && kind) next[id] = kind;
+      else delete next[id];
+      return next;
+    });
   };
 
   const approve = async (companyId: string) => {
     if (busyRef.current.has(companyId)) return;
-    setBusy(companyId, true);
+    setBusy(companyId, true, 'approve');
     try {
       // select() detects an update that RLS filtered out (it would otherwise look successful).
       const { data, error } = await supabase
@@ -94,7 +106,7 @@ export default function ApprovalsScreen() {
 
   const reject = async (companyId: string) => {
     if (busyRef.current.has(companyId)) return;
-    setBusy(companyId, true);
+    setBusy(companyId, true, 'reject');
     try {
       const { data, error } = await supabase
         .from('companies')
@@ -132,15 +144,6 @@ export default function ApprovalsScreen() {
       { text: 'Reject', style: 'destructive', onPress: () => reject(company.id) },
     ]);
 
-  if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={C.accent} />
-        <Text style={styles.loadingText}>Fetching pending approvals...</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <TopNavbar title="Approvals" subtitle="Pending companies" />
@@ -148,7 +151,17 @@ export default function ApprovalsScreen() {
         title="Company approvals"
         subtitle={`${companies.length} ${companies.length === 1 ? 'company awaits' : 'companies await'} a decision`}
       />
-      <FlatList
+      {loading ? (
+        <View style={styles.listContainer}>
+          <SkeletonList count={3} variant="job" />
+        </View>
+      ) : loadError ? (
+        <View style={styles.listContainer}>
+          <LoadError message={loadError} onRetry={() => fetchPendingCompanies()} />
+        </View>
+      ) : (
+        <FlatList
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchPendingCompanies(true)} tintColor={C.accent} />}
         data={companies}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
@@ -178,7 +191,7 @@ export default function ApprovalsScreen() {
               <Button
                 mode="contained"
                 onPress={() => handleApprove(item)}
-                loading={busyIds.includes(item.id)}
+                loading={busyKinds[item.id] === 'approve'}
                 disabled={busyIds.includes(item.id)}
                 style={styles.actionBtn}
                 contentStyle={styles.btnContent}
@@ -191,6 +204,7 @@ export default function ApprovalsScreen() {
               <Button
                 mode="outlined"
                 onPress={() => handleReject(item)}
+                loading={busyKinds[item.id] === 'reject'}
                 disabled={busyIds.includes(item.id)}
                 style={styles.rejectBtn}
                 contentStyle={styles.btnContent}
@@ -209,7 +223,8 @@ export default function ApprovalsScreen() {
             hint="No companies currently pending approval."
           />
         }
-      />
+        />
+      )}
     </View>
   );
 }

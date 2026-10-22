@@ -1,14 +1,22 @@
-import React, { useCallback, useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
-import { Menu } from 'react-native-paper';
-import { useRouter, useFocusEffect } from 'expo-router';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { useAuthStore } from '@/store/authStore';
-import { supabase } from '@/lib/supabase';
-import { getInitials } from '@/lib/format';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { C } from '@/theme/design';
-import { BrandLogo } from '@/components/BrandLogo';
+import { useSafeNavigate } from '@/hooks/useSafeNavigate';
+import { BrandLogo } from "@/components/BrandLogo";
+import { getInitials } from "@/lib/format";
+import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/store/authStore";
+import { C } from "@/theme/design";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { Menu } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface TopNavbarProps {
   title?: string;
@@ -17,11 +25,12 @@ interface TopNavbarProps {
 }
 
 export const TopNavbar: React.FC<TopNavbarProps> = ({
-  title = 'PlacementPortal',
+  title = "PlacementPortal",
   subtitle,
   showBack = false,
 }) => {
   const router = useRouter();
+  const nav = useSafeNavigate();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const showRolePill = width >= 480;
@@ -37,10 +46,10 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
     }
     try {
       const { count } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('read', false);
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("read", false);
       setUnreadCount(count ?? 0);
     } catch {
       setUnreadCount(0);
@@ -53,14 +62,22 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
       return;
     }
     try {
-      if (role === 'student') {
-        const { data } = await supabase.from('students').select('full_name').eq('id', user.id).maybeSingle();
+      if (role === "student") {
+        const { data } = await supabase
+          .from("students")
+          .select("full_name")
+          .eq("id", user.id)
+          .maybeSingle();
         setDisplayName((data as any)?.full_name ?? null);
-      } else if (role === 'company') {
-        const { data } = await supabase.from('companies').select('company_name').eq('id', user.id).maybeSingle();
+      } else if (role === "company") {
+        const { data } = await supabase
+          .from("companies")
+          .select("company_name")
+          .eq("id", user.id)
+          .maybeSingle();
         setDisplayName((data as any)?.company_name ?? null);
       } else {
-        setDisplayName('Admin');
+        setDisplayName("Admin");
       }
     } catch {
       setDisplayName(null);
@@ -71,20 +88,20 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
     useCallback(() => {
       fetchBadge();
       fetchDisplayName();
-    }, [fetchBadge, fetchDisplayName])
+    }, [fetchBadge, fetchDisplayName]),
   );
 
   const goNotifications = () => {
-    if (role === 'company') router.push('/(company)/notifications' as any);
-    else if (role === 'admin') router.push('/(admin)/notifications' as any);
-    else router.push('/(student)/notifications' as any);
+    if (role === "company") nav.push("/(company)/notifications" as any);
+    else if (role === "admin") nav.push("/(admin)/notifications" as any);
+    else nav.push("/(student)/notifications" as any);
   };
 
   const goProfile = () => {
     setMenuVisible(false);
-    if (role === 'student') router.push('/(student)/profile' as any);
-    else if (role === 'company') router.push('/(company)/profile' as any);
-    else router.push('/(admin)/profile' as any);
+    if (role === "student") nav.push("/(student)/profile" as any);
+    else if (role === "company") nav.push("/(company)/profile" as any);
+    else nav.push("/(admin)/profile" as any);
   };
 
   const goSettings = () => {
@@ -95,24 +112,33 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   const handleLogout = async () => {
     setMenuVisible(false);
     try {
-      await supabase.auth.signOut();
-      await logout();
-      router.replace('/(auth)/login' as any);
-    } catch (e) {
-      console.error('Logout error:', e);
+      await logout(); // clears the Supabase session (incl. the persisted web session) and the auth store
+    } finally {
+      nav.replace("/(auth)/login" as any);
     }
   };
 
   const rolePill = () => {
-    if (role === 'admin') return { label: 'Admin', color: C.accent, bg: C.accentSoft };
-    if (role === 'company') return { label: 'Company', color: C.accent, bg: C.accentSoft };
-    if (role === 'student') return { label: 'Student', color: C.accent, bg: C.accentSoft };
-    return { label: 'Portal', color: C.muted, bg: C.soft };
+    if (role === "admin")
+      return { label: "Admin", color: C.accent, bg: C.accentSoft };
+    if (role === "company")
+      return { label: "Company", color: C.accent, bg: C.accentSoft };
+    if (role === "student")
+      return { label: "Student", color: C.accent, bg: C.accentSoft };
+    return { label: "Portal", color: C.muted, bg: C.soft };
   };
   const pill = rolePill();
 
   return (
-    <View style={[styles.bar, { paddingTop: Platform.OS === 'web' ? 0 : insets.top, height: 68 + (Platform.OS === 'web' ? 0 : insets.top) }]}>
+    <View
+      style={[
+        styles.bar,
+        {
+          paddingTop: Platform.OS === "web" ? 0 : insets.top,
+          height: 68 + (Platform.OS === "web" ? 0 : insets.top),
+        },
+      ]}
+    >
       <View style={styles.left}>
         {showBack ? (
           <TouchableOpacity
@@ -129,14 +155,22 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         )}
         <View style={styles.titleBlock}>
           <View style={styles.titleRow}>
-            <Text style={styles.title} numberOfLines={1}>{title}</Text>
+            <Text style={styles.title} numberOfLines={1}>
+              {title}
+            </Text>
             {showRolePill ? (
               <View style={[styles.pill, { backgroundColor: pill.bg }]}>
-                <Text style={[styles.pillText, { color: pill.color }]}>{pill.label}</Text>
+                <Text style={[styles.pillText, { color: pill.color }]}>
+                  {pill.label}
+                </Text>
               </View>
             ) : null}
           </View>
-          {subtitle ? <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text> : null}
+          {subtitle ? (
+            <Text style={styles.subtitle} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : null}
         </View>
       </View>
 
@@ -146,12 +180,18 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           onPress={goNotifications}
           activeOpacity={0.7}
           accessibilityRole="button"
-          accessibilityLabel={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+          accessibilityLabel={
+            unreadCount > 0
+              ? `Notifications, ${unreadCount} unread`
+              : "Notifications"
+          }
         >
           <MaterialCommunityIcons name="bell-outline" size={20} color={C.ink} />
           {unreadCount > 0 ? (
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              <Text style={styles.badgeText}>
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </Text>
             </View>
           ) : null}
         </TouchableOpacity>
@@ -161,20 +201,30 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           onDismiss={() => setMenuVisible(false)}
           anchor={
             <TouchableOpacity
-                style={styles.avatar}
-                onPress={() => setMenuVisible(true)}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel="Open account menu"
-              >
-              <Text style={styles.avatarText}>{getInitials(displayName, user?.email)}</Text>
+              style={styles.avatar}
+              onPress={() => setMenuVisible(true)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Open account menu"
+            >
+              <Text style={styles.avatarText}>
+                {getInitials(displayName, user?.email)}
+              </Text>
             </TouchableOpacity>
           }
           contentStyle={styles.menuContent}
         >
-          <Menu.Item leadingIcon="account-outline" onPress={goProfile} title="Profile" />
-          <Menu.Item leadingIcon="cog-outline" onPress={goSettings} title="Settings" />
-          <Menu.Item leadingIcon="logout" onPress={handleLogout} title="Logout" />
+          <Menu.Item
+            leadingIcon="account-outline"
+            onPress={goProfile}
+            title="Profile"
+          />
+          {/* <Menu.Item leadingIcon="cog-outline" onPress={goSettings} title="Settings" /> */}
+          <Menu.Item
+            leadingIcon="logout"
+            onPress={handleLogout}
+            title="Logout"
+          />
         </Menu>
       </View>
     </View>
@@ -188,20 +238,38 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: C.line,
     paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     zIndex: 20,
-    ...(Platform.OS === 'web' ? ({ position: 'sticky', top: 0 } as any) : null),
+    ...(Platform.OS === "web" ? ({ position: "sticky", top: 0 } as any) : null),
   },
-  left: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, flexShrink: 1 },
+  left: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
+  },
   titleBlock: { flex: 1, minWidth: 0, flexShrink: 1 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 0 },
-  title: { fontSize: 17, fontWeight: '700', color: C.ink, letterSpacing: -0.3, flexShrink: 1 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 8, minWidth: 0 },
+  title: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: C.ink,
+    letterSpacing: -0.3,
+    flexShrink: 1,
+  },
   subtitle: { fontSize: 11, color: C.muted },
   pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
-  pillText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
-  right: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 },
+  pillText: {
+    fontSize: 10,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  right: { flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 0 },
   iconBtn: {
     width: 44,
     height: 44,
@@ -209,11 +277,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: C.line,
     backgroundColor: C.card,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   badge: {
-    position: 'absolute',
+    position: "absolute",
     top: -4,
     right: -4,
     minWidth: 18,
@@ -222,11 +290,11 @@ const styles = StyleSheet.create({
     backgroundColor: C.danger,
     borderWidth: 1.5,
     borderColor: C.paper,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 4,
   },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  badgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
   avatar: {
     width: 44,
     height: 44,
@@ -234,9 +302,15 @@ const styles = StyleSheet.create({
     backgroundColor: C.accentSoft,
     borderWidth: 1,
     borderColor: C.line,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  avatarText: { color: C.accentStrong, fontWeight: '700', fontSize: 14 },
-  menuContent: { backgroundColor: '#FFFFFF', borderRadius: 12, marginTop: 8, borderWidth: 1, borderColor: C.line },
+  avatarText: { color: C.accentStrong, fontWeight: "700", fontSize: 14 },
+  menuContent: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: C.line,
+  },
 });

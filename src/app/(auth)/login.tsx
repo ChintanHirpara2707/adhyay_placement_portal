@@ -1,3 +1,4 @@
+import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 import { AnimatedPressable } from "@/components/AnimatedPressable";
 import { AnimatedToast, ToastType } from "@/components/AnimatedToast";
 import { supabase } from "@/lib/supabase";
@@ -15,10 +16,13 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import { Button, HelperText, Text, TextInput } from "react-native-paper";
+import { HelperText, Text, TextInput } from "react-native-paper";
+import { Button } from "@/components/ui/AppButton";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { z } from "zod";
 import { BrandLogo } from "@/components/BrandLogo";
+import { GoogleButton, OrDivider } from "@/components/ui/GoogleButton";
+import { useGoogleSignIn } from "@/lib/googleAuth";
 import { C, R, shadow } from "@/theme/design";
 
 const PERKS = [
@@ -76,7 +80,9 @@ const loginResolver = (data: LoginFormData) => {
 /* Small pieces                                                        */
 /* ------------------------------------------------------------------ */
 export default function LoginScreen() {
+  const google = useGoogleSignIn();
   const router = useRouter();
+  const nav = useSafeNavigate();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
@@ -194,11 +200,11 @@ export default function LoginScreen() {
         showToast("Login successful! Redirecting...", "success");
 
         if (userRole === "admin") {
-          router.replace("/(admin)/dashboard");
+          nav.replace("/(admin)/dashboard");
         } else if (userRole === "company") {
-          router.replace("/(company)/dashboard");
+          nav.replace("/(company)/dashboard");
         } else {
-          router.replace("/(student)/dashboard");
+          nav.replace("/(student)/dashboard");
         }
       }
     } catch (e: any) {
@@ -408,6 +414,9 @@ export default function LoginScreen() {
                   Sign In
                 </Button>
               </AnimatedPressable>
+
+              <OrDivider />
+              <GoogleButton onPress={google.start} loading={google.loading} disabled={loading} />
 
               <View style={styles.divider} />
 

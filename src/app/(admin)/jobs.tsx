@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, ScrollView } from 'react-native';
+import { StyleSheet, View, ScrollView, RefreshControl } from 'react-native';
 import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
-import { Text, Button, ActivityIndicator, Searchbar } from 'react-native-paper';
+import { useLoadState } from '@/hooks/useLoadState';
+import { useScreenReady } from '@/hooks/useScreenReady';
+import { SkeletonList } from '@/components/loading/Skeleton';
+import { LoadError } from '@/components/loading/LoadError';
+import { Text, Searchbar } from 'react-native-paper';
+import { Button } from '@/components/ui/AppButton';
 import { supabase } from '@/lib/supabase';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
@@ -24,13 +29,15 @@ interface JobPosting {
 }
 
 export default function JobsScreen() {
-  const [loading, setLoading] = useState(true);
+  const { loading, refreshing, error: loadError, begin, succeed, fail, end } = useLoadState('job postings');
+  useScreenReady(!loading);
   const [jobs, setJobs] = useState<JobPosting[]>([]);
   const [query, setQuery] = useState('');
+  const [closingId, setClosingId] = useState<string | null>(null);
 
-  const fetchAllJobs = async () => {
+  const fetchAllJobs = async (isRefresh = false) => {
+    begin(isRefresh);
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .from('job_postings')
         .select(`
@@ -49,16 +56,14 @@ export default function JobsScreen() {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        showAlert('Error', 'Failed to retrieve jobs: ' + error.message);
-        return;
-      }
+      if (error) throw error;
 
       setJobs(data as any[] || []);
+      succeed();
     } catch (e: any) {
-      showAlert('Unexpected Error', e.message || 'Something went wrong.');
+      fail(e);
     } finally {
-      setLoading(false);
+      end();
     }
   };
 
@@ -81,6 +86,8 @@ export default function JobsScreen() {
     ]);
 
   const handleClosePosting = async (jobId: string) => {
+    if (closingId) return; // one close at a time (ignores repeat taps)
+    setClosingId(jobId);
     try {
       const { data, error } = await supabase
         .from('job_postings')
@@ -100,17 +107,10 @@ export default function JobsScreen() {
       showAlert('Success', 'Job posting has been closed.');
     } catch (e: any) {
       showAlert('Error', e.message || 'Something went wrong.');
+    } finally {
+      setClosingId(null);
     }
   };
-
-  if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={C.accent} />
-        <Text style={styles.loadingText}>Fetching all job postings...</Text>
-      </View>
-    );
-  }
 
   const filtered = searchFilter(jobs);
 
@@ -121,7 +121,16 @@ export default function JobsScreen() {
       <View style={styles.searchWrap}>
         <Searchbar placeholder="Search title or company" value={query} onChangeText={setQuery} style={styles.search} inputStyle={styles.searchInput} iconColor={C.muted} placeholderTextColor={C.muted} accessibilityLabel="Search postings" />
       </View>
-      <ScrollView contentContainerStyle={styles.listContainer}>
+      {loading ? (
+        <View style={styles.listContainer}>
+          <SkeletonList count={3} variant="job" />
+        </View>
+      ) : loadError ? (
+        <View style={styles.listContainer}>
+          <LoadError message={loadError} onRetry={() => fetchAllJobs()} />
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.listContainer} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchAllJobs(true)} tintColor={C.accent} />}>
         <DataTable
           columns={[
             {
@@ -159,7 +168,7 @@ export default function JobsScreen() {
               flex: 1,
               render: (item) =>
                 item.status === 'open' ? (
-                  <Button mode="outlined" compact onPress={() => confirmClose(item.id, item.title)} style={styles.closeBtn} textColor={C.danger} icon="close-box">
+                  <Button mode="outlined" compact loading={closingId === item.id} onPress={() => confirmClose(item.id, item.title)} style={styles.closeBtn} textColor={C.danger} icon="close-box">
                     Close
                   </Button>
                 ) : (
@@ -174,6 +183,7 @@ export default function JobsScreen() {
           <EmptyState icon="briefcase-search-outline" title="No postings found" hint="No job postings exist in the database." />
         ) : null}
       </ScrollView>
+      )}
     </View>
   );
 }

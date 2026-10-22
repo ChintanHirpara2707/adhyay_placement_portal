@@ -1,3 +1,4 @@
+import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { TextInput, Text } from 'react-native-paper';
@@ -37,6 +38,7 @@ const RESEND_SECONDS = 60;
 
 export default function VerifyOtpScreen() {
   const router = useRouter();
+  const nav = useSafeNavigate();
   const { email, sent } = useLocalSearchParams<{ email: string; sent?: string }>();
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -112,7 +114,7 @@ export default function VerifyOtpScreen() {
       }
       await supabase.auth.signOut().catch(() => {});
       // Navigate immediately — alert-gated navigation is unreliable on web.
-      router.replace({ pathname: '/(auth)/login', params: { reset: '1' } } as any);
+      nav.replace({ pathname: '/(auth)/login', params: { reset: '1' } } as any);
     } catch (e: any) {
       console.warn('[reset] unexpected error:', e?.message);
       fail(e.message || 'Something went wrong.');

@@ -1,4 +1,6 @@
+import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 import { PartnerMarquee } from "@/components/PartnerMarquee";
+import { ScreenLoader } from "@/components/loading/ScreenLoader";
 import { useAuthStore } from "@/store/authStore";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useRouter } from "expo-router";
@@ -12,7 +14,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import { ActivityIndicator, Text } from "react-native-paper";
+import { Text } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -148,6 +150,7 @@ function PipelineCard({ compact }: { compact: boolean }) {
 /* ------------------------------------------------------------------ */
 function LandingPage() {
   const router = useRouter();
+  const nav = useSafeNavigate();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
@@ -160,8 +163,8 @@ function LandingPage() {
   const topInset = Platform.OS === "web" ? 0 : insets.top;
   const bottomInset = Platform.OS === "web" ? 0 : insets.bottom;
 
-  const goLogin = () => router.push("/(auth)/login" as any);
-  const goSignup = () => router.push("/(auth)/signup" as any);
+  const goLogin = () => nav.push("/(auth)/login" as any);
+  const goSignup = () => nav.push("/(auth)/signup" as any);
 
   return (
     <View style={styles.container}>
@@ -485,32 +488,13 @@ function LandingPage() {
 
 export default function IndexPage() {
   const router = useRouter();
-  const { session, role, loading } = useAuthStore();
+  const { session, loading } = useAuthStore();
 
-  useEffect(() => {
-    if (loading || !session) return;
-    if (role) {
-      if (role === "student") {
-        router.replace("/(student)/dashboard" as any);
-      } else if (role === "company") {
-        router.replace("/(company)/dashboard" as any);
-      } else if (role === "admin") {
-        router.replace("/(admin)/dashboard" as any);
-      }
-    } else {
-      supabase.auth.signOut().then(() => {
-        router.replace("/(auth)/login" as any);
-      });
-    }
-  }, [session, role, loading, router]);
+  // Signed-in users are redirected by useAuthGate (src/lib/authSession.ts): to their dashboard, or to
+  // choose-role when they have no `users` row yet (first Google sign-in).
 
   if (loading || session) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={C.accent} />
-        <Text style={styles.loadingText}>Authenticating workspace...</Text>
-      </View>
-    );
+    return <ScreenLoader />;
   }
 
   return (

@@ -1,6 +1,9 @@
+import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, View, Dimensions, TouchableOpacity } from 'react-native';
-import { showAlert } from '@/lib/alert';
+import { StyleSheet, View, Dimensions, TouchableOpacity, RefreshControl } from 'react-native';
+import { useLoadState } from '@/hooks/useLoadState';
+import { useScreenReady } from '@/hooks/useScreenReady';
+import { LoadError } from '@/components/loading/LoadError';
 import { Text, Button } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { BarChart } from 'react-native-chart-kit';
@@ -16,7 +19,9 @@ import { Skeleton } from '@/components/SkeletonLoader';
 
 export default function AdminDashboardScreen() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const nav = useSafeNavigate();
+  const { loading, refreshing, error: loadError, begin, succeed, fail, end } = useLoadState('the dashboard');
+  useScreenReady(!loading);
   const [totalStudents, setTotalStudents] = useState(0);
   const [totalCompanies, setTotalCompanies] = useState(0);
   const [placementPct, setPlacementPct] = useState(0);
@@ -84,16 +89,20 @@ export default function AdminDashboardScreen() {
     );
   }, []);
 
-  const loadAll = useCallback(async () => {
-    try {
-      setLoading(true);
-      await Promise.all([fetchAdminStats(), fetchBranchWiseChart(), fetchPendingApprovalsCount()]);
-    } catch (e: any) {
-      showAlert('Error', e.message || 'Failed to load dashboard.');
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchAdminStats, fetchBranchWiseChart, fetchPendingApprovalsCount]);
+  const loadAll = useCallback(
+    async (isRefresh = false) => {
+      begin(isRefresh);
+      try {
+        await Promise.all([fetchAdminStats(), fetchBranchWiseChart(), fetchPendingApprovalsCount()]);
+        succeed();
+      } catch (e: any) {
+        fail(e);
+      } finally {
+        end();
+      }
+    },
+    [fetchAdminStats, fetchBranchWiseChart, fetchPendingApprovalsCount, begin, succeed, fail, end]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -112,8 +121,12 @@ export default function AdminDashboardScreen() {
           <Skeleton height={46} borderRadius={10} />
           <Skeleton height={240} borderRadius={14} />
         </Screen>
-      ) : (
+      ) : loadError ? (
         <Screen>
+          <LoadError message={loadError} onRetry={() => loadAll()} />
+        </Screen>
+      ) : (
+        <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadAll(true)} tintColor={C.accent} />}>
           <MotiView from={{ opacity: 0, translateY: 16 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400 }}>
             <Text style={styles.heading}>Overview</Text>
           </MotiView>
@@ -135,7 +148,7 @@ export default function AdminDashboardScreen() {
               textColor="#FFFFFF"
               style={styles.actionBtn}
               contentStyle={styles.actionContent}
-              onPress={() => router.push('/(admin)/approvals' as any)}
+              onPress={() => nav.push('/(admin)/approvals' as any)}
             >
               {pendingCount > 0 ? `Review approvals (${pendingCount})` : 'Review approvals'}
             </Button>
@@ -145,7 +158,7 @@ export default function AdminDashboardScreen() {
               textColor={C.accent}
               style={[styles.actionBtn, styles.actionOutline]}
               contentStyle={styles.actionContent}
-              onPress={() => router.push('/(admin)/broadcast' as any)}
+              onPress={() => nav.push('/(admin)/broadcast' as any)}
             >
               Send broadcast
             </Button>
@@ -179,7 +192,7 @@ export default function AdminDashboardScreen() {
             action={
               <TouchableOpacity
                 style={styles.linkBtn}
-                onPress={() => router.push('/(admin)/broadcast' as any)}
+                onPress={() => nav.push('/(admin)/broadcast' as any)}
                 accessibilityRole="button"
                 accessibilityLabel="Send a broadcast"
               >

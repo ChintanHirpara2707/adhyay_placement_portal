@@ -1,6 +1,11 @@
+import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, View, FlatList, RefreshControl } from 'react-native';
 import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
+import { useLoadState } from '@/hooks/useLoadState';
+import { useScreenReady } from '@/hooks/useScreenReady';
+import { SkeletonList } from '@/components/loading/Skeleton';
+import { LoadError } from '@/components/loading/LoadError';
 import { Text, Button, FAB, Switch } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '@/lib/supabase';
@@ -21,9 +26,10 @@ interface JobPosting {
 
 export default function CompanyMyJobsScreen() {
   const router = useRouter();
+  const nav = useSafeNavigate();
   const { user } = useAuthStore();
-  const [refreshing, setRefreshing] = useState(false);
-  const [loadingJobs, setLoadingJobs] = useState(true);
+  const { loading: loadingJobs, refreshing, error: loadError, begin, succeed, fail, end } = useLoadState('jobs');
+  useScreenReady(!loadingJobs);
   const [jobs, setJobs] = useState<JobPosting[]>([]);
 
   const fetchCompanyJobs = async () => {
@@ -42,18 +48,17 @@ export default function CompanyMyJobsScreen() {
   const loadJobs = useCallback(
     async (isRefresh = false) => {
       if (!user) return;
+      begin(isRefresh);
       try {
-        if (isRefresh) setRefreshing(true);
-        else setLoadingJobs(true);
         await fetchCompanyJobs();
+        succeed();
       } catch (e: any) {
-        showAlert('Error', e.message || 'Failed to retrieve job postings.');
+        fail(e);
       } finally {
-        setLoadingJobs(false);
-        setRefreshing(false);
+        end();
       }
     },
-    [user]
+    [user, begin, succeed, fail, end]
   );
 
   useFocusEffect(
@@ -78,9 +83,11 @@ export default function CompanyMyJobsScreen() {
       <PageHeader title="My jobs" subtitle="Manage your postings and review applicants." />
       {loadingJobs ? (
         <View style={styles.listContainer}>
-          <Skeleton height={110} borderRadius={14} style={{ marginBottom: 12 }} />
-          <Skeleton height={110} borderRadius={14} style={{ marginBottom: 12 }} />
-          <Skeleton height={110} borderRadius={14} />
+          <SkeletonList count={3} variant="job" />
+        </View>
+      ) : loadError ? (
+        <View style={styles.listContainer}>
+          <LoadError message={loadError} onRetry={() => loadJobs()} />
         </View>
       ) : (
         <FlatList
@@ -89,7 +96,7 @@ export default function CompanyMyJobsScreen() {
           contentContainerStyle={styles.listContainer}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadJobs(true)} tintColor={C.accent} colors={[C.accent]} />}
           renderItem={({ item }) => (
-            <AnimatedPressable onPress={() => router.push({ pathname: '/(company)/applicants/[jobId]' as any, params: { jobId: item.id } })} scaleTo={0.98}>
+            <AnimatedPressable onPress={() => nav.push({ pathname: '/(company)/applicants/[jobId]' as any, params: { jobId: item.id } })} scaleTo={0.98}>
               <View style={styles.card}>
                 <View style={styles.headerRow}>
                   <Text style={styles.jobTitle} numberOfLines={2}>{item.title}</Text>
@@ -112,7 +119,7 @@ export default function CompanyMyJobsScreen() {
               title="No postings yet"
               hint="Create your first job posting to start receiving applications."
               action={
-                <Button mode="contained" onPress={() => router.push('/(company)/post-job' as any)} style={styles.postButton} buttonColor={C.accent} textColor="#FFFFFF">
+                <Button mode="contained" onPress={() => nav.push('/(company)/post-job' as any)} style={styles.postButton} buttonColor={C.accent} textColor="#FFFFFF">
                   Create Your First Job Posting
                 </Button>
               }
@@ -120,7 +127,7 @@ export default function CompanyMyJobsScreen() {
           }
         />
       )}
-      <FAB icon="plus" accessibilityLabel="Post a new job" style={styles.fab} color="#FFFFFF" onPress={() => router.push('/(company)/post-job' as any)} />
+      <FAB icon="plus" accessibilityLabel="Post a new job" style={styles.fab} color="#FFFFFF" onPress={() => nav.push('/(company)/post-job' as any)} />
     </View>
   );
 }

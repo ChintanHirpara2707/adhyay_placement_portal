@@ -1,10 +1,14 @@
+import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, View, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { Text, ProgressBar, Button } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
-import { showAlert } from '@/lib/alert';
+import { useLoadState } from '@/hooks/useLoadState';
+import { useScreenReady } from '@/hooks/useScreenReady';
+import { Skeleton, SkeletonCard, SkeletonList } from '@/components/loading/Skeleton';
+import { LoadError } from '@/components/loading/LoadError';
 import { useAuthStore } from '@/store/authStore';
 import { C, R } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
@@ -30,10 +34,28 @@ interface FeedItem {
   read: boolean;
 }
 
+/** Same blocks, in the same order and sizes, as the loaded dashboard so nothing jumps when data arrives. */
+function DashboardSkeleton() {
+  return (
+    <>
+      <Skeleton height={112} borderRadius={14} />
+      <SkeletonCard variant="stat" />
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Skeleton height={46} borderRadius={10} style={{ flex: 1 }} />
+        <Skeleton height={46} borderRadius={10} style={{ flex: 1 }} />
+      </View>
+      <Skeleton width={170} height={20} />
+      <SkeletonList count={2} variant="job" />
+    </>
+  );
+}
+
 export default function StudentDashboard() {
   const router = useRouter();
+  const nav = useSafeNavigate();
   const { user } = useAuthStore();
-  const [refreshing, setRefreshing] = useState(false);
+  const { loading, refreshing, error: loadError, begin, succeed, fail, end } = useLoadState('your dashboard');
+  useScreenReady(!loading);
   const [fullName, setFullName] = useState('');
   const [completion, setCompletion] = useState(0);
   const [appCount, setAppCount] = useState(0);
@@ -119,16 +141,17 @@ export default function StudentDashboard() {
 
   const loadAll = useCallback(
     async (isRefresh = false) => {
-      if (isRefresh) setRefreshing(true);
+      begin(isRefresh);
       try {
         await Promise.all([fetchProfileCompletion(), fetchStudentStats(), fetchRecommendedJobs(), fetchRecentActivity()]);
+        succeed();
       } catch (e: any) {
-        showAlert('Could not load your dashboard', e?.message || 'Something went wrong. Pull down to retry.');
+        fail(e);
       } finally {
-        if (isRefresh) setRefreshing(false);
+        end();
       }
     },
-    [fetchProfileCompletion, fetchStudentStats, fetchRecommendedJobs, fetchRecentActivity]
+    [fetchProfileCompletion, fetchStudentStats, fetchRecommendedJobs, fetchRecentActivity, begin, succeed, fail, end]
   );
 
   useFocusEffect(
@@ -148,118 +171,127 @@ export default function StudentDashboard() {
           <Text style={styles.sub}>Here is your placement snapshot.</Text>
         </MotiView>
 
-        <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: 60 }}>
-          <View style={styles.hero}>
-            {completion < 100 ? (
-              <View>
-                <Text style={styles.heroTitle}>Profile {completion}% complete</Text>
-                <ProgressBar progress={completion / 100} color={C.accent} style={styles.bar} />
-                <Text style={styles.heroHint}>Add CGPA, branch, skills and resume to unlock jobs.</Text>
+        {loading ? (
+          <DashboardSkeleton />
+        ) : loadError ? (
+          <LoadError message={loadError} onRetry={() => loadAll()} />
+        ) : (
+          <>
+
+          <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: 60 }}>
+            <View style={styles.hero}>
+              {completion < 100 ? (
+                <View>
+                  <Text style={styles.heroTitle}>Profile {completion}% complete</Text>
+                  <ProgressBar progress={completion / 100} color={C.accent} style={styles.bar} />
+                  <Text style={styles.heroHint}>Add CGPA, branch, skills and resume to unlock jobs.</Text>
+                  <Button
+                    mode="contained"
+                    contentStyle={styles.actionContent}
+                    style={[styles.actionBtn, styles.heroBtn]}
+                    buttonColor={C.accent}
+                    textColor="#FFFFFF"
+                    onPress={() => nav.push('/(student)/profile' as any)}
+                  >
+                    Complete profile
+                  </Button>
+                </View>
+              ) : (
+                <>
+                  <Text style={styles.heroTitle}>{recommended.length} {recommended.length === 1 ? 'drive matches' : 'drives match'} you</Text>
+                  <Text style={styles.heroHint}>Your profile is complete. Keep applying before deadlines.</Text>
+                </>
+              )}
+            </View>
+          </MotiView>
+
+          <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: 120 }}>
+            <View style={styles.summaryBlock}>
+              <StatSummary
+                items={[
+                  { label: 'Applications', value: appCount },
+                  { label: 'Interviews', value: interviewCount, sub: 'upcoming' },
+                  { label: 'Selected', value: selectedCount, sub: 'offers' },
+                ]}
+              />
+              <View style={styles.actionRow}>
                 <Button
                   mode="contained"
+                  icon="arrow-right"
                   contentStyle={styles.actionContent}
-                  style={[styles.actionBtn, styles.heroBtn]}
+                  style={styles.actionBtn}
                   buttonColor={C.accent}
                   textColor="#FFFFFF"
-                  onPress={() => router.push('/(student)/profile' as any)}
+                  onPress={() => nav.push('/(student)/applications' as any)}
                 >
-                  Complete profile
+                  View applications
+                </Button>
+                <Button
+                  mode="outlined"
+                  icon="calendar-clock"
+                  contentStyle={styles.actionContent}
+                  style={[styles.actionBtn, styles.actionOutline]}
+                  textColor={C.accent}
+                  onPress={() => nav.push('/(student)/interviews' as any)}
+                >
+                  View interviews
                 </Button>
               </View>
-            ) : (
-              <>
-                <Text style={styles.heroTitle}>{recommended.length} {recommended.length === 1 ? 'drive matches' : 'drives match'} you</Text>
-                <Text style={styles.heroHint}>Your profile is complete. Keep applying before deadlines.</Text>
-              </>
-            )}
-          </View>
-        </MotiView>
-
-        <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: 120 }}>
-          <View style={styles.summaryBlock}>
-            <StatSummary
-              items={[
-                { label: 'Applications', value: appCount },
-                { label: 'Interviews', value: interviewCount, sub: 'upcoming' },
-                { label: 'Selected', value: selectedCount, sub: 'offers' },
-              ]}
-            />
-            <View style={styles.actionRow}>
-              <Button
-                mode="contained"
-                icon="arrow-right"
-                contentStyle={styles.actionContent}
-                style={styles.actionBtn}
-                buttonColor={C.accent}
-                textColor="#FFFFFF"
-                onPress={() => router.push('/(student)/applications' as any)}
-              >
-                View applications
-              </Button>
-              <Button
-                mode="outlined"
-                icon="calendar-clock"
-                contentStyle={styles.actionContent}
-                style={[styles.actionBtn, styles.actionOutline]}
-                textColor={C.accent}
-                onPress={() => router.push('/(student)/interviews' as any)}
-              >
-                View interviews
-              </Button>
             </View>
-          </View>
-        </MotiView>
+          </MotiView>
 
-        <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: 180 }}>
-          <SectionHeader
-            title="Recommended jobs"
-            action={
-              <TouchableOpacity
-                onPress={() => router.push('/(student)/jobs' as any)}
-                style={styles.seeAllBtn}
-                accessibilityRole="link"
-                accessibilityLabel="See all jobs"
-              >
-                <Text style={styles.seeAll}>See all</Text>
-              </TouchableOpacity>
-            }
-          />
-          {recommended.length === 0 ? (
-            <Card>
-              <EmptyState icon="briefcase-outline" title="No recommendations yet" hint="Complete your profile to get recommendations." />
-            </Card>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
-              {recommended.map((j) => (
+          <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: 180 }}>
+            <SectionHeader
+              title="Recommended jobs"
+              action={
                 <TouchableOpacity
-                  key={j.id}
-                  activeOpacity={0.85}
-                  onPress={() => router.push({ pathname: '/(student)/job/[id]' as any, params: { id: j.id } })}
+                  onPress={() => nav.push('/(student)/jobs' as any)}
+                  style={styles.seeAllBtn}
+                  accessibilityRole="link"
+                  accessibilityLabel="See all jobs"
                 >
-                  <Card style={styles.recCard}>
-                    <Text style={styles.recTitle} numberOfLines={2}>{j.title}</Text>
-                    <Text style={styles.recCompany} numberOfLines={1}>{(j.companies as any)?.company_name ?? 'Company'}</Text>
-                    <StatusChip label={formatCTC(j.ctc)} tone="accent" />
-                    <Text style={styles.recMeta}>{formatDeadline(j.deadline)}</Text>
-                  </Card>
+                  <Text style={styles.seeAll}>See all</Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
-        </MotiView>
-
-        <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: 240 }}>
-          <SectionHeader title="Recent activity" />
-          <Card>
-            {activity.length === 0 ? (
-              <EmptyState icon="bell-outline" title="No updates yet" hint="New shortlists and interviews will appear here." />
+              }
+            />
+            {recommended.length === 0 ? (
+              <Card>
+                <EmptyState icon="briefcase-outline" title="No recommendations yet" hint="Complete your profile to get recommendations." />
+              </Card>
             ) : (
-              activity.map((n) => (
-                <ActivityFeedItem key={n.id} icon="bell-outline" message={n.message} timestamp={n.created_at} unread={!n.read} />
-              ))
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
+                {recommended.map((j) => (
+                  <TouchableOpacity
+                    key={j.id}
+                    activeOpacity={0.85}
+                    onPress={() => nav.push({ pathname: '/(student)/job/[id]' as any, params: { id: j.id } })}
+                  >
+                    <Card style={styles.recCard}>
+                      <Text style={styles.recTitle} numberOfLines={2}>{j.title}</Text>
+                      <Text style={styles.recCompany} numberOfLines={1}>{(j.companies as any)?.company_name ?? 'Company'}</Text>
+                      <StatusChip label={formatCTC(j.ctc)} tone="accent" />
+                      <Text style={styles.recMeta}>{formatDeadline(j.deadline)}</Text>
+                    </Card>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             )}
-          </Card>
-        </MotiView>
+          </MotiView>
+
+          <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300, delay: 240 }}>
+            <SectionHeader title="Recent activity" />
+            <Card>
+              {activity.length === 0 ? (
+                <EmptyState icon="bell-outline" title="No updates yet" hint="New shortlists and interviews will appear here." />
+              ) : (
+                activity.map((n) => (
+                  <ActivityFeedItem key={n.id} icon="bell-outline" message={n.message} timestamp={n.created_at} unread={!n.read} />
+                ))
+              )}
+            </Card>
+          </MotiView>
+            </>
+        )}
       </Screen>
     </View>
   );

@@ -1,35 +1,35 @@
 import React, { useEffect } from 'react';
 import { Tabs, useRouter } from 'expo-router';
-import { ActivityIndicator } from 'react-native-paper';
+import { ScreenLoader } from '@/components/loading/ScreenLoader';
+import { tabNavigationListeners } from '@/hooks/useSafeNavigate';
 import { AnimatedTabIcon } from '@/components/AnimatedTabIcon';
 import { useAuthStore } from '@/store/authStore';
 import { useRoleGuard } from '@/hooks/useRoleGuard';
-import { View } from 'react-native';
 import { useTabBarOptions } from '@/components/ui/useTabBarOptions';
-import { C } from '@/theme/design';
 
 export default function CompanyLayout() {
   const router = useRouter();
-  const { session, role, loading } = useAuthStore();
+  const { session, role, loading, needsRole, roleResolved } = useAuthStore();
   const tabBarOptions = useTabBarOptions();
   useRoleGuard('company');
 
   useEffect(() => {
-    if (!loading && (!session || role !== 'company')) {
+    if (loading || (session && !roleResolved)) return;
+    if (session && needsRole) {
+      router.replace('/(auth)/choose-role' as any);
+      return;
+    }
+    if (!session || role !== 'company') {
       router.replace('/(auth)/login' as any);
     }
-  }, [session, role, loading]);
+  }, [session, role, loading, needsRole, roleResolved]);
 
   if (loading || !session || role !== 'company') {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: C.paper }}>
-        <ActivityIndicator size="large" color={C.accent} />
-      </View>
-    );
+    return <ScreenLoader />;
   }
 
   return (
-    <Tabs screenOptions={tabBarOptions}>
+    <Tabs screenOptions={tabBarOptions} screenListeners={tabNavigationListeners}>
       <Tabs.Screen
         name="dashboard"
         options={{

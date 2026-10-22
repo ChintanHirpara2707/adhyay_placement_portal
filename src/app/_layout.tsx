@@ -1,14 +1,17 @@
 import { DefaultTheme, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { PaperProvider } from 'react-native-paper';
 import { useEffect, useState } from 'react';
 import { useFonts } from 'expo-font';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { supabase } from '@/lib/supabase';
+import { useAuthBootstrap, useAuthGate } from '@/lib/authSession';
 import { useAuthStore } from '@/store/authStore';
+import { useNavigationWatcher } from '@/hooks/useSafeNavigate';
+import { ScreenLoader } from '@/components/loading/ScreenLoader';
+import { TopProgressBar } from '@/components/loading/TopProgressBar';
 import { customPaperTheme, Theme } from '@/theme/theme';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
@@ -41,74 +44,47 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   }
 }
 
+/** Mounted inside the navigator so it can read the route and redirect (see useAuthGate). */
+function AuthGate() {
+  useAuthGate();
+  useNavigationWatcher(); // settles the top progress bar once a navigation has landed
+  return null;
+}
+
+/**
+ * Covers the app while the session / role is being resolved (app start, after login, after Google
+ * sign-in, role redirects) so users never see a white flash or the wrong screen for a moment.
+ */
+function AuthLoadingOverlay() {
+  const loading = useAuthStore((s) => s.loading);
+  const resolving = useAuthStore((s) => !!s.session && !s.roleResolved);
+  if (!loading && !resolving) return null;
+  return (
+    <View style={styles.overlay}>
+      <ScreenLoader />
+    </View>
+  );
+}
+
 export default function RootLayout() {
   // Static web export pre-renders with a 0px window, and React does not repair style-only
   // hydration mismatches, so width-based sizes (logo, gutters) would stay wrong. Render on the
   // client only; native is unaffected.
   const [mounted, setMounted] = useState(Platform.OS !== 'web');
   useEffect(() => setMounted(true), []);
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     ...MaterialCommunityIcons.font,
     MaterialCommunityIcons: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
     'material-community': require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
     'Material Design Icons': require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
   });
-  const setSession = useAuthStore((state) => state.setSession);
-  const setRole = useAuthStore((state) => state.setRole);
-  const setLoading = useAuthStore((state) => state.setLoading);
+  useAuthBootstrap();
 
-  useEffect(() => {
-    // Check active sessions and fetch roles
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) {
-        supabase
-          .from('users')
-          .select('role')
-          .eq('id', session.user.id)
-          .maybeSingle()
-          .then(({ data, error }) => {
-            if (error) {
-              console.error('Failed to fetch role on layout load:', error.message);
-            }
-            if (data && !error) {
-              setRole(data.role);
-            }
-            setLoading(false);
-          });
-      } else {
-        setRole(null);
-        setLoading(false);
-      }
-    });
+  const authLoading = useAuthStore((s) => s.loading);
+  const appReady = mounted && (fontsLoaded || !!fontError);
 
-    // Listen for auth state updates
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      if (session?.user) {
-        const { data, error } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', session.user.id)
-          .maybeSingle();
-        if (error) {
-          console.error('Failed to fetch role on auth state change:', error.message);
-        }
-        if (data && !error) {
-          setRole(data.role);
-        }
-      } else {
-        setRole(null);
-      }
-      setLoading(false);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  if (!mounted) return null;
+  // Never a blank frame: show the branded loader until the client has mounted and the icon font is ready.
+  if (!appReady) return <ScreenLoader />;
 
   const whiteNavTheme = {
     ...DefaultTheme,
@@ -127,7 +103,7 @@ export default function RootLayout() {
       <PaperProvider theme={customPaperTheme}>
         <StatusBar style="dark" />
         <AlertHost />
-        <AnimatedSplashOverlay />
+        <AnimatedSplashOverlay ready={!authLoading} />
         <Stack
           screenOptions={{
             headerShown: false,
@@ -141,7 +117,15 @@ export default function RootLayout() {
           <Stack.Screen name="(company)" />
           <Stack.Screen name="(admin)" />
         </Stack>
+        <AuthGate />
+        <AuthLoadingOverlay />
+        <TopProgressBar />
       </PaperProvider>
     </ThemeProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  // Below the native splash overlay (zIndex 1000) so the splash still covers app start.
+  overlay: { ...StyleSheet.absoluteFill, zIndex: 900, backgroundColor: '#FFFFFF' },
+});

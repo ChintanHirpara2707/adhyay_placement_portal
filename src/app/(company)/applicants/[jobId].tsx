@@ -1,7 +1,13 @@
+import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 import React, { useCallback, useRef, useState } from 'react';
-import { StyleSheet, View, FlatList, Linking } from 'react-native';
+import { StyleSheet, View, FlatList, Linking, RefreshControl } from 'react-native';
 import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
-import { Text, Button, ActivityIndicator } from 'react-native-paper';
+import { useLoadState } from '@/hooks/useLoadState';
+import { useScreenReady } from '@/hooks/useScreenReady';
+import { SkeletonList } from '@/components/loading/Skeleton';
+import { LoadError } from '@/components/loading/LoadError';
+import { Text } from 'react-native-paper';
+import { Button } from '@/components/ui/AppButton';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { C } from '@/theme/design';
@@ -26,17 +32,19 @@ interface Applicant {
 
 export default function JobApplicantsScreen() {
   const router = useRouter();
+  const nav = useSafeNavigate();
   const { jobId } = useLocalSearchParams();
 
-  const [loading, setLoading] = useState(true);
+  const { loading, refreshing, error: loadError, begin, succeed, fail, end } = useLoadState('applicants');
+  useScreenReady(!loading);
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [jobTitle, setJobTitle] = useState('');
   const [filter, setFilter] = useState<'all' | 'applied' | 'shortlisted' | 'rejected'>('all');
 
-  const fetchApplicantsForJob = async () => {
+  const fetchApplicantsForJob = async (isRefresh = false) => {
     if (!jobId) return;
+    begin(isRefresh);
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .from('applications')
         .select(`
@@ -56,10 +64,7 @@ export default function JobApplicantsScreen() {
         `)
         .eq('job_id', jobId);
 
-      if (error) {
-        showAlert('Could not load applicants', error.message, [{ text: 'Go back', onPress: () => router.back() }]);
-        return;
-      }
+      if (error) throw error;
 
       const list = data as any[] || [];
       setApplicants(list);
@@ -80,10 +85,11 @@ export default function JobApplicantsScreen() {
           setJobTitle(jobData.title);
         }
       }
+      succeed();
     } catch (e: any) {
-      showAlert('Unexpected Error', e.message || 'Something went wrong.');
+      fail(e);
     } finally {
-      setLoading(false);
+      end();
     }
   };
 
@@ -97,10 +103,18 @@ export default function JobApplicantsScreen() {
   // Applicant ids with a status change in flight, so a double tap cannot send two updates/notifications.
   const busyRef = useRef<Set<string>>(new Set());
   const [busyIds, setBusyIds] = useState<string[]>([]);
-  const setBusy = (id: string, on: boolean) => {
+  // Which action is running per id, so only the pressed button shows its spinner.
+  const [busyKinds, setBusyKinds] = useState<Record<string, string>>({});
+  const setBusy = (id: string, on: boolean, kind?: string) => {
     if (on) busyRef.current.add(id);
     else busyRef.current.delete(id);
     setBusyIds(Array.from(busyRef.current));
+    setBusyKinds((prev) => {
+      const next = { ...prev };
+      if (on && kind) next[id] = kind;
+      else delete next[id];
+      return next;
+    });
   };
 
   const filterByStatus = (list: Applicant[]) => (filter === 'all' ? list : list.filter((a) => a.status === filter));
@@ -108,7 +122,7 @@ export default function JobApplicantsScreen() {
 
   const handleUpdateStatus = async (applicant: Applicant, newStatus: 'shortlisted' | 'rejected') => {
     if (busyRef.current.has(applicant.id)) return;
-    setBusy(applicant.id, true);
+    setBusy(applicant.id, true, newStatus);
     try {
       // 1. Update application status (select() so a row filtered out by RLS is detected, not silently "successful")
       const { data: updated, error: updateError } = await supabase
@@ -159,15 +173,6 @@ export default function JobApplicantsScreen() {
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={C.accent} />
-        <Text style={styles.loadingText}>Fetching applicants list...</Text>
-      </View>
-    );
-  }
-
   const handleShortlist = async (applicant: Applicant) => handleUpdateStatus(applicant, 'shortlisted');
   const handleReject = (applicant: Applicant) =>
     showAlert('Reject applicant?', `${applicant.students?.full_name ?? 'This applicant'} will be told their application was not selected.`, [
@@ -187,7 +192,7 @@ export default function JobApplicantsScreen() {
   return (
     <View style={styles.container}>
       <TopNavbar title="Applicants" subtitle={jobTitle || 'Job applicants'} showBack />
-      <PageHeader title={jobTitle || 'Job position'} subtitle={`${visible.length} ${visible.length === 1 ? 'candidate' : 'candidates'}`} />
+      <PageHeader title={jobTitle || 'Job position'} subtitle={loading ? 'Loading candidates…' : `${visible.length} ${visible.length === 1 ? 'candidate' : 'candidates'}`} />
       <FilterChips
         value={filter}
         onChange={setFilter}
@@ -197,7 +202,17 @@ export default function JobApplicantsScreen() {
         }))}
       />
 
-      <FlatList
+      {loading ? (
+        <View style={styles.listContainer}>
+          <SkeletonList count={3} variant="application" />
+        </View>
+      ) : loadError ? (
+        <View style={styles.listContainer}>
+          <LoadError message={loadError} onRetry={() => fetchApplicantsForJob()} />
+        </View>
+      ) : (
+        <FlatList
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchApplicantsForJob(true)} tintColor={C.accent} />}
         data={visible}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
@@ -233,7 +248,7 @@ export default function JobApplicantsScreen() {
                       mode="contained"
                       compact
                       onPress={() => handleShortlist(item)}
-                      loading={busyIds.includes(item.id)}
+                      loading={busyKinds[item.id] === 'shortlisted'}
                       disabled={busyIds.includes(item.id)}
                       style={styles.shortlistBtn}
                       buttonColor={C.accent}
@@ -245,6 +260,7 @@ export default function JobApplicantsScreen() {
                       mode="outlined"
                       compact
                       onPress={() => handleReject(item)}
+                      loading={busyKinds[item.id] === 'rejected'}
                       disabled={busyIds.includes(item.id)}
                       style={styles.rejectBtn}
                       textColor={C.danger}
@@ -256,7 +272,7 @@ export default function JobApplicantsScreen() {
                 <Button
                   mode="text"
                   compact
-                  onPress={() => router.push({ pathname: '/(company)/applicant/[id]' as any, params: { id: item.id } })}
+                  onPress={() => nav.push({ pathname: '/(company)/applicant/[id]' as any, params: { id: item.id } })}
                   textColor={C.accent}
                 >
                   View & Interview
@@ -272,6 +288,7 @@ export default function JobApplicantsScreen() {
           />
         }
       />
+      )}
     </View>
   );
 }

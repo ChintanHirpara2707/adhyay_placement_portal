@@ -1,7 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, Linking, TouchableOpacity } from 'react-native';
 import { showAlert } from '@/lib/alert';
-import { Text, Button, ActivityIndicator } from 'react-native-paper';
+import { useLoadState } from '@/hooks/useLoadState';
+import { useScreenReady } from '@/hooks/useScreenReady';
+import { Skeleton } from '@/components/loading/Skeleton';
+import { LoadError } from '@/components/loading/LoadError';
+import { Text } from 'react-native-paper';
+import { Button } from '@/components/ui/AppButton';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
@@ -66,13 +71,42 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+/** Mirrors the announcement sheet: header block, then labelled sections, then the two action buttons. */
+function JobDetailSkeleton() {
+  return (
+    <Card style={{ width: '100%', maxWidth: 760, alignSelf: 'center', padding: 20, gap: 18 }}>
+      <View style={{ alignItems: 'center', gap: 8 }}>
+        <Skeleton width={90} height={11} />
+        <Skeleton width="55%" height={24} />
+        <Skeleton width="40%" height={14} />
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
+          <Skeleton width={84} height={24} borderRadius={999} />
+          <Skeleton width={110} height={24} borderRadius={999} />
+        </View>
+      </View>
+      {[0, 1, 2].map((i) => (
+        <View key={i} style={{ gap: 8 }}>
+          <Skeleton width={150} height={12} />
+          <Skeleton width="100%" height={14} />
+          <Skeleton width="85%" height={14} />
+        </View>
+      ))}
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Skeleton height={48} borderRadius={10} style={{ flex: 1 }} />
+        <Skeleton height={48} borderRadius={10} style={{ flex: 1 }} />
+      </View>
+    </Card>
+  );
+}
+
 export default function JobDetailsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { user } = useAuthStore();
   const { dismissJob, isDismissed } = useFeedStore();
 
-  const [loading, setLoading] = useState(true);
+  const { loading, error: loadError, begin, succeed, fail, end } = useLoadState('this drive');
+  useScreenReady(!loading);
   const [job, setJob] = useState<JobDetails | null>(null);
   const [hasApplied, setHasApplied] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -86,7 +120,7 @@ export default function JobDetailsScreen() {
         'id, title, description, ctc, min_cgpa, eligible_branches, backlog_allowed, deadline, status, job_profiles, stipend, bond_years, location, round_names, round_dates, companies (company_name, description, website)'
       )
       .eq('id', id)
-      .single();
+      .maybeSingle();
     if (jobError) throw jobError;
     return jobData as any;
   };
@@ -101,23 +135,27 @@ export default function JobDetailsScreen() {
     return (data?.length ?? 0) > 0;
   };
 
-  useEffect(() => {
+  const loadJob = useCallback(async () => {
     if (!id || !user) return;
-    (async () => {
-      try {
-        setLoading(true);
-        const details = await fetchJobById();
-        setJob(details);
+    begin();
+    try {
+      const details = await fetchJobById();
+      setJob(details ?? null);
+      if (details) {
         setHasApplied(await checkIfAlreadyApplied(details.id));
         setDismissed(isDismissed(details.id));
-      } catch (e: any) {
-        showAlert('Error', e.message || 'Failed to retrieve job details.');
-        router.back();
-      } finally {
-        setLoading(false);
       }
-    })();
-  }, [id, user]);
+      succeed();
+    } catch (e: any) {
+      fail(e);
+    } finally {
+      end();
+    }
+  }, [id, user, begin, succeed, fail, end]);
+
+  useEffect(() => {
+    loadJob();
+  }, [loadJob]);
 
   const handleApply = async () => {
     if (!user || !job || applyingRef.current) return;
@@ -171,11 +209,13 @@ export default function JobDetailsScreen() {
 
   const checkDeadlinePassed = () => isDeadlinePassed(job?.deadline);
 
-  if (loading) {
+  if (loading || loadError) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={C.accent} />
-        <Text style={styles.loadingText}>Loading announcement…</Text>
+      <View style={styles.page}>
+        <TopNavbar title="Announcement" subtitle="Loading…" showBack />
+        <Screen>
+          {loading ? <JobDetailSkeleton /> : <LoadError message={loadError} onRetry={loadJob} />}
+        </Screen>
       </View>
     );
   }

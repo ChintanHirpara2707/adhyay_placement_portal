@@ -1,3 +1,4 @@
+import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 import { AnimatedPressable } from "@/components/AnimatedPressable";
 import { AnimatedToast, ToastType } from "@/components/AnimatedToast";
 import { supabase } from "@/lib/supabase";
@@ -15,15 +16,17 @@ import {
   useWindowDimensions,
 } from "react-native";
 import {
-  Button,
   HelperText,
   SegmentedButtons,
   Text,
   TextInput,
 } from "react-native-paper";
+import { Button } from "@/components/ui/AppButton";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { z } from "zod";
 import { BrandLogo } from "@/components/BrandLogo";
+import { GoogleButton, OrDivider } from "@/components/ui/GoogleButton";
+import { useGoogleSignIn } from "@/lib/googleAuth";
 import { C, R, shadow } from "@/theme/design";
 
 const PERKS = [
@@ -79,7 +82,9 @@ const signupResolver = (data: SignupFormData) => {
 };
 
 export default function SignupScreen() {
+  const google = useGoogleSignIn();
   const router = useRouter();
+  const nav = useSafeNavigate();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
@@ -170,7 +175,7 @@ export default function SignupScreen() {
         "success",
       );
       setTimeout(() => {
-        router.replace("/(auth)/login");
+        nav.replace("/(auth)/login");
       }, 1200);
     } catch (e: any) {
       showToast(e.message || "Something went wrong.", "error");
@@ -414,6 +419,9 @@ export default function SignupScreen() {
                   Sign Up
                 </Button>
               </AnimatedPressable>
+
+              <OrDivider />
+              <GoogleButton onPress={google.start} loading={google.loading} disabled={loading} />
 
               <View style={styles.divider} />
 

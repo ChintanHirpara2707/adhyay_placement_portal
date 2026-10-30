@@ -37,45 +37,68 @@ async function syncRole(session: Session) {
   store.setLoading(false);
 }
 
+// One role lookup per signed-in user: focus-refresh SIGNED_IN events and token refreshes for the same user are ignored.
+let syncedFor: string | null = null;
+
+function handleSession(session: Session | null) {
+  const store = useAuthStore.getState();
+  store.setSession(session);
+  if (!session) {
+    syncedFor = null;
+    store.setRole(null);
+    store.setNeedsRole(false);
+    store.setRoleResolved(true);
+    store.setLoading(false);
+    return;
+  }
+  if (syncedFor === session.user.id) {
+    store.setLoading(false);
+    return;
+  }
+  syncedFor = session.user.id;
+  store.setRoleResolved(false);
+  syncRole(session).catch((e) => {
+    showAlert('Could not load your account', e?.message || 'Something went wrong.');
+    store.setRoleResolved(true);
+    store.setLoading(false);
+  });
+}
+
+/**
+ * Re-runs the startup session + role resolution (used by the "Retry" action when startup is slow).
+ * Resolves quietly; failures surface through the store / alerts like the first attempt.
+ */
+export function retryStartup() {
+  const store = useAuthStore.getState();
+  syncedFor = null;
+  store.setLoading(true);
+  supabase.auth
+    .getSession()
+    .then(({ data: { session } }) => handleSession(session))
+    .catch((e) => {
+      showAlert('Could not reach the server', e?.message || 'Check your connection and try again.');
+      store.setLoading(false);
+    });
+}
+
 /**
  * Keeps the auth store in sync with Supabase: an initial getSession() check plus onAuthStateChange.
- * Both feed one handler that looks the role up once per signed-in user (focus-refresh SIGNED_IN
- * events and token refreshes for the same user are ignored).
+ * Both feed one handler (handleSession). Runs in the background while the intro animation plays.
  */
 export function useAuthBootstrap() {
   useEffect(() => {
-    let syncedFor: string | null = null;
-
-    const handle = (session: Session | null) => {
-      const store = useAuthStore.getState();
-      store.setSession(session);
-      if (!session) {
-        syncedFor = null;
-        store.setRole(null);
-        store.setNeedsRole(false);
-        store.setRoleResolved(true);
-        store.setLoading(false);
-        return;
-      }
-      if (syncedFor === session.user.id) {
-        store.setLoading(false);
-        return;
-      }
-      syncedFor = session.user.id;
-      store.setRoleResolved(false);
-      syncRole(session).catch((e) => {
-        showAlert('Could not load your account', e?.message || 'Something went wrong.');
-        store.setRoleResolved(true);
-        store.setLoading(false);
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => handleSession(session))
+      .catch((e) => {
+        showAlert('Could not reach the server', e?.message || 'Check your connection and try again.');
+        useAuthStore.getState().setLoading(false);
       });
-    };
-
-    supabase.auth.getSession().then(({ data: { session } }) => handle(session));
     // Deferred: calling Supabase inside the callback itself can deadlock the auth client.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setTimeout(() => handle(session), 0);
+      setTimeout(() => handleSession(session), 0);
     });
     return () => subscription.unsubscribe();
   }, []);

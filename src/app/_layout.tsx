@@ -7,14 +7,15 @@ import { PaperProvider } from 'react-native-paper';
 import { useEffect, useState } from 'react';
 import { useFonts } from 'expo-font';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { useAuthBootstrap, useAuthGate } from '@/lib/authSession';
+import { retryStartup, useAuthBootstrap, useAuthGate } from '@/lib/authSession';
+import { showAlert } from '@/lib/alert';
 import { useAuthStore } from '@/store/authStore';
 import { useNavigationWatcher } from '@/hooks/useSafeNavigate';
 import { ScreenLoader } from '@/components/loading/ScreenLoader';
 import { TopProgressBar } from '@/components/loading/TopProgressBar';
 import { customPaperTheme, Theme } from '@/theme/theme';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { AppIntro, markIntroPlayed, shouldPlayIntro } from '@/components/AppIntro';
 import { AlertHost } from '@/components/AlertHost';
 
 SplashScreen.preventAutoHideAsync();
@@ -71,7 +72,13 @@ export default function RootLayout() {
   // hydration mismatches, so width-based sizes (logo, gutters) would stay wrong. Render on the
   // client only; native is unaffected.
   const [mounted, setMounted] = useState(Platform.OS !== 'web');
-  useEffect(() => setMounted(true), []);
+  // The brand intro: native plays it on every cold start; web decides after mount (sessionStorage is client-only)
+  // and plays it once per browser session. It is mounted exactly once, here, and never again after `introDone`.
+  const [introDone, setIntroDone] = useState(Platform.OS === 'web');
+  useEffect(() => {
+    setMounted(true);
+    if (Platform.OS === 'web' && shouldPlayIntro()) setIntroDone(false);
+  }, []);
   const [fontsLoaded, fontError] = useFonts({
     ...MaterialCommunityIcons.font,
     MaterialCommunityIcons: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
@@ -81,10 +88,17 @@ export default function RootLayout() {
   useAuthBootstrap();
 
   const authLoading = useAuthStore((s) => s.loading);
+  const resolvingRole = useAuthStore((s) => !!s.session && !s.roleResolved);
   const appReady = mounted && (fontsLoaded || !!fontError);
+  // Session + role are known, so the screen under the intro is already the right one.
+  // This resolves in the background while the intro plays; the intro does not wait for the animation first.
+  const startupReady = appReady && !authLoading && !resolvingRole;
 
-  // Never a blank frame: show the branded loader until the client has mounted and the icon font is ready.
-  if (!appReady) return <ScreenLoader />;
+  const onIntroTimeout = () =>
+    showAlert('Startup is taking longer than expected', 'We could not finish loading your account. Check your connection and try again.', [
+      { text: 'Retry', onPress: retryStartup },
+      { text: 'Dismiss', style: 'cancel' },
+    ]);
 
   const whiteNavTheme = {
     ...DefaultTheme,
@@ -99,11 +113,12 @@ export default function RootLayout() {
   };
 
   return (
+    <View style={styles.root}>
+      {appReady ? (
     <ThemeProvider value={whiteNavTheme}>
       <PaperProvider theme={customPaperTheme}>
         <StatusBar style="dark" />
         <AlertHost />
-        <AnimatedSplashOverlay ready={!authLoading} />
         <Stack
           screenOptions={{
             headerShown: false,
@@ -122,10 +137,16 @@ export default function RootLayout() {
         <TopProgressBar />
       </PaperProvider>
     </ThemeProvider>
+      ) : null}
+      {!introDone ? (
+        <AppIntro ready={startupReady} onStart={markIntroPlayed} onTimeout={onIntroTimeout} onFinish={() => setIntroDone(true)} />
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: Theme.colors.background },
   // Below the native splash overlay (zIndex 1000) so the splash still covers app start.
   overlay: { ...StyleSheet.absoluteFill, zIndex: 900, backgroundColor: '#FFFFFF' },
 });

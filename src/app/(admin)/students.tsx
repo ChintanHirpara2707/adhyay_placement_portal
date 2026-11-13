@@ -174,7 +174,7 @@ export default function StudentsScreen() {
             { label: 'CGPA', value: selected.cgpa != null ? String(selected.cgpa) : null },
             { label: 'Backlogs', value: selected.backlog_count != null ? String(selected.backlog_count) : null },
             { label: 'Skills', value: Array.isArray(selected.skills) ? selected.skills.join(', ') : null },
-            { label: 'Resume', value: selected.resume_url, link: true },
+            { label: 'Resume', value: selected.resume_url, resume: true },
             { label: 'Registered', value: selected.users?.created_at ? new Date(selected.users.created_at).toLocaleString() : null },
           ]}
           debarred={!!selected.debarred}

@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/loading/Skeleton';
 import { LoadError } from '@/components/loading/LoadError';
 import { Text } from 'react-native-paper';
 import { Button } from '@/components/ui/AppButton';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
@@ -103,7 +103,10 @@ export default function JobDetailsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { user } = useAuthStore();
-  const { dismissJob, isDismissed } = useFeedStore();
+  const { dismissedIds, savedIds, loadPrefs, setSaved, setHidden } = useFeedStore();
+  const jobIdStr = String(id ?? '');
+  const dismissed = dismissedIds.includes(jobIdStr);
+  const saved = savedIds.includes(jobIdStr);
 
   const { loading, error: loadError, begin, succeed, fail, end } = useLoadState('this drive');
   useScreenReady(!loading);
@@ -111,7 +114,7 @@ export default function JobDetailsScreen() {
   const [hasApplied, setHasApplied] = useState(false);
   const [applying, setApplying] = useState(false);
   const applyingRef = useRef(false); // blocks a fast double tap from registering twice
-  const [dismissed, setDismissed] = useState(false);
+  const prefBusyRef = useRef(false);
 
   const fetchJobById = async () => {
     const { data: jobData, error: jobError } = await supabase
@@ -139,11 +142,10 @@ export default function JobDetailsScreen() {
     if (!id || !user) return;
     begin();
     try {
-      const details = await fetchJobById();
+      const [details] = await Promise.all([fetchJobById(), loadPrefs(user.id)]);
       setJob(details ?? null);
       if (details) {
         setHasApplied(await checkIfAlreadyApplied(details.id));
-        setDismissed(isDismissed(details.id));
       }
       succeed();
     } catch (e: any) {
@@ -156,6 +158,16 @@ export default function JobDetailsScreen() {
   useEffect(() => {
     loadJob();
   }, [loadJob]);
+
+  // Coming back from Applications (where a registration may have been withdrawn): re-check quietly, no skeleton.
+  useFocusEffect(
+    useCallback(() => {
+      if (!user || !job) return;
+      checkIfAlreadyApplied(job.id)
+        .then(setHasApplied)
+        .catch(() => {});
+    }, [user, job?.id])
+  );
 
   const handleApply = async () => {
     if (!user || !job || applyingRef.current) return;
@@ -198,13 +210,32 @@ export default function JobDetailsScreen() {
     }
   };
 
-  const handleNotInterested = () => {
-    if (!job) return;
-    dismissJob(job.id);
-    setDismissed(true);
-    showAlert('Hidden', 'This drive is hidden from your feed on this device.', [
-      { text: 'OK', onPress: () => router.back() },
-    ]);
+  const handleNotInterested = async () => {
+    if (!job || !user || prefBusyRef.current) return;
+    prefBusyRef.current = true;
+    try {
+      if (dismissed) {
+        await setHidden(user.id, job.id, false);
+        return;
+      }
+      if (await setHidden(user.id, job.id, true)) {
+        showAlert('Hidden', 'This drive is hidden from your feed on all your devices.', [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+      }
+    } finally {
+      prefBusyRef.current = false;
+    }
+  };
+
+  const handleToggleSave = async () => {
+    if (!job || !user || prefBusyRef.current) return;
+    prefBusyRef.current = true;
+    try {
+      await setSaved(user.id, job.id, !saved);
+    } finally {
+      prefBusyRef.current = false;
+    }
   };
 
   const checkDeadlinePassed = () => isDeadlinePassed(job?.deadline);
@@ -347,8 +378,11 @@ export default function JobDetailsScreen() {
                   Register
                 </Button>
               )}
-              <Button mode="outlined" onPress={handleNotInterested} disabled={dismissed} style={[styles.actionBtn, styles.ghostBtn]} contentStyle={styles.actionContent} textColor={C.muted}>
-                {dismissed ? 'Hidden' : 'Not Interested'}
+              <Button mode="outlined" onPress={handleToggleSave} icon={saved ? 'bookmark' : 'bookmark-outline'} style={[styles.actionBtn, styles.ghostBtn]} contentStyle={styles.actionContent} textColor={saved ? C.accent : C.muted}>
+                {saved ? 'Saved' : 'Save'}
+              </Button>
+              <Button mode="outlined" onPress={handleNotInterested} style={[styles.actionBtn, styles.ghostBtn]} contentStyle={styles.actionContent} textColor={C.muted}>
+                {dismissed ? 'Hidden · Undo' : 'Not Interested'}
               </Button>
             </View>
           </Card>

@@ -6,7 +6,7 @@ import { useLoadState } from '@/hooks/useLoadState';
 import { useScreenReady } from '@/hooks/useScreenReady';
 import { SkeletonList } from '@/components/loading/Skeleton';
 import { LoadError } from '@/components/loading/LoadError';
-import { Text, Button, Banner, Searchbar } from 'react-native-paper';
+import { Text, Button, Banner, Searchbar, IconButton } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
@@ -15,7 +15,7 @@ import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
 import { JobCardSkeleton } from '@/components/SkeletonLoader';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
-import { StatusChip, EmptyState, PageHeader, pageColumn } from '@/components/ui/kit';
+import { StatusChip, EmptyState, PageHeader, FilterChips, pageColumn } from '@/components/ui/kit';
 import { formatCTC, formatDeadline, isDeadlineUrgent, parseDbDate } from '@/lib/format';
 
 interface JobPosting {
@@ -35,7 +35,8 @@ export default function StudentJobsScreen() {
   const router = useRouter();
   const nav = useSafeNavigate();
   const { user } = useAuthStore();
-  const { dismissedIds } = useFeedStore();
+  const { dismissedIds, savedIds, loadPrefs, setSaved } = useFeedStore();
+  const [view, setView] = useState<'all' | 'saved'>('all');
   const { loading, refreshing, error: loadError, begin, succeed, fail, end } = useLoadState('jobs');
   useScreenReady(!loading);
   const [jobs, setJobs] = useState<JobPosting[]>([]);
@@ -96,7 +97,7 @@ export default function StudentJobsScreen() {
         return;
       }
       setProfileIncomplete(false);
-      const [openJobs, appliedIds] = await Promise.all([fetchOpenJobs(), fetchExistingApplications()]);
+      const [openJobs, appliedIds] = await Promise.all([fetchOpenJobs(), fetchExistingApplications(), loadPrefs(user.id)]);
       const filtered = filterJobsByEligibility(openJobs, student);
       const sorted = sortJobsByDeadline(filtered);
       setJobs(sorted.map((j) => ({ ...j, isApplied: appliedIds.has(j.id) })));
@@ -123,7 +124,9 @@ export default function StudentJobsScreen() {
         ((j.companies as any)?.company_name ?? '').toLowerCase().includes(q)
     );
   };
-  const visible = searchFilter(jobs).filter((j) => !dismissedIds.includes(j.id));
+  const visible = searchFilter(jobs).filter(
+    (j) => !dismissedIds.includes(j.id) && (view === 'all' || savedIds.includes(j.id))
+  );
 
   return (
     <View style={styles.container}>
@@ -148,6 +151,14 @@ export default function StudentJobsScreen() {
           accessibilityLabel="Search jobs"
         />
       </View>
+      <FilterChips
+        value={view}
+        onChange={setView}
+        options={[
+          { value: 'all', label: 'All drives' },
+          { value: 'saved', label: `Saved (${savedIds.length})` },
+        ]}
+      />
       <Text style={styles.resultCount}>
         {visible.length > 0 ? `${visible.length} ${visible.length === 1 ? 'opportunity matches' : 'opportunities match'} your profile` : 'No matches'}
       </Text>
@@ -175,6 +186,14 @@ export default function StudentJobsScreen() {
                   <View style={styles.titleRow}>
                     <Text style={styles.jobTitle} numberOfLines={2}>{item.title}</Text>
                     {item.isApplied ? <StatusChip label="Applied" tone="muted" /> : null}
+                    <IconButton
+                      icon={savedIds.includes(item.id) ? 'bookmark' : 'bookmark-outline'}
+                      iconColor={savedIds.includes(item.id) ? C.accent : C.muted}
+                      size={22}
+                      style={styles.bookmark}
+                      accessibilityLabel={savedIds.includes(item.id) ? 'Remove from saved' : 'Save drive'}
+                      onPress={() => user && setSaved(user.id, item.id, !savedIds.includes(item.id))}
+                    />
                   </View>
                   <Text style={styles.companyName} numberOfLines={1}>{(item.companies as any)?.company_name ?? 'Unknown Company'}</Text>
                   <View style={styles.infoRow}>
@@ -188,8 +207,12 @@ export default function StudentJobsScreen() {
           ListEmptyComponent={
             <EmptyState
               icon="briefcase-search-outline"
-              title="No matching drives"
-              hint="No jobs currently match your eligibility criteria."
+              title={view === 'saved' ? 'No saved drives' : 'No matching drives'}
+              hint={
+                view === 'saved'
+                  ? 'Tap the bookmark on a drive to keep it here.'
+                  : 'No jobs currently match your eligibility criteria.'
+              }
               action={
                 <Button mode="outlined" onPress={() => loadData()} style={styles.retryButton} textColor={C.accent}>
                   Refresh Opportunities
@@ -215,5 +238,6 @@ const styles = StyleSheet.create({
   jobTitle: { fontSize: 16, fontWeight: '600', color: C.ink, flex: 1, minWidth: 0, flexShrink: 1, letterSpacing: -0.3 },
   companyName: { fontSize: 14, color: C.muted },
   infoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 },
+  bookmark: { margin: -8 },
   retryButton: { borderRadius: 12, borderColor: C.line, marginTop: 12 },
 });

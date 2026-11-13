@@ -4,6 +4,7 @@ import { formatLongDate, formatTime } from "@/lib/dates";
 import { TopNavbar } from "@/components/TopNavbar";
 import { getInitials, parseDbDate } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
+import { openResume } from "@/lib/resume";
 import { useAuthStore } from "@/store/authStore";
 import { C } from "@/theme/design";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -104,7 +105,7 @@ export default function ApplicantDetailScreen() {
       const { data, error } = await supabase
         .from("applications")
         .select(
-          "id, status, applied_at, job_id, student_id, current_round, students(full_name, branch, cgpa, phone, skills, resume_url), job_postings!inner(id, title, company_id, total_rounds, round_names, round_dates, companies(company_name))",
+          "id, status, applied_at, job_id, student_id, current_round, offer_response, offer_reason, students(full_name, branch, cgpa, phone, skills, resume_url), job_postings!inner(id, title, company_id, total_rounds, round_names, round_dates, companies(company_name))",
         )
         .eq("id", id)
         .maybeSingle();
@@ -518,7 +519,11 @@ export default function ApplicantDetailScreen() {
                     <TouchableOpacity
                       activeOpacity={0.8}
                       style={styles.resumeBox}
-                      onPress={() => Linking.openURL(student.resume_url)}
+                      onPress={() =>
+                        openResume(student.resume_url).catch((e) =>
+                          showAlert("Could not open resume", e?.message || "Try again."),
+                        )
+                      }
                     >
                       <View style={styles.resumeIconWrap}>
                         <MaterialCommunityIcons name="file-document-outline" size={18} color={C.accent} />
@@ -561,6 +566,25 @@ export default function ApplicantDetailScreen() {
                       round{totalRounds === 1 ? "" : "s"} for {jobTitle}. No further
                       actions needed.
                     </Text>
+                  </View>
+                  <View style={styles.offerBox}>
+                    <Text style={styles.fieldLabel}>Offer response</Text>
+                    <Text
+                      style={[
+                        styles.offerStatus,
+                        app.offer_response === "accepted" && { color: C.success },
+                        app.offer_response === "declined" && { color: C.danger },
+                      ]}
+                    >
+                      {app.offer_response === "accepted"
+                        ? "Accepted"
+                        : app.offer_response === "declined"
+                          ? "Declined"
+                          : "Awaiting the student's response"}
+                    </Text>
+                    {app.offer_reason ? (
+                      <Text style={styles.offerReason}>Reason: {app.offer_reason}</Text>
+                    ) : null}
                   </View>
                 </Card.Content>
               </Card>
@@ -1082,6 +1106,22 @@ const styles = StyleSheet.create({
   placedText: {
     fontSize: 13,
     color: C.success,
+    lineHeight: 19,
+  },
+  offerBox: {
+    borderTopWidth: 1,
+    borderTopColor: C.line,
+    paddingTop: 12,
+    gap: 2,
+  },
+  offerStatus: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: C.ink,
+  },
+  offerReason: {
+    fontSize: 13,
+    color: C.muted,
     lineHeight: 19,
   },
   markRow: {

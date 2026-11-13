@@ -4,12 +4,16 @@ import { Text } from 'react-native-paper';
 import { Button } from '@/components/ui/AppButton';
 import { Card, StatusChip, pageColumn } from '@/components/ui/kit';
 import { C } from '@/theme/design';
+import { openResume } from '@/lib/resume';
+import { showAlert } from '@/lib/alert';
 
 export interface DetailField {
   label: string;
   value?: string | null;
   /** Rendered as a tappable link when true and a value exists. */
   link?: boolean;
+  /** Value is a resume reference: open it through a signed URL (or the old http link) instead of showing the raw path. */
+  resume?: boolean;
 }
 
 interface Props {
@@ -46,7 +50,16 @@ export function AdminDetailView({ title, subtitle, chips, fields, debarred, busy
           return (
             <View key={f.label} style={styles.field}>
               <Text style={styles.label}>{f.label}</Text>
-              {has && f.link ? (
+              {has && f.resume ? (
+                <Text
+                  style={styles.link}
+                  onPress={() =>
+                    openResume(f.value).catch((e) => showAlert('Could not open resume', e?.message || 'Try again.'))
+                  }
+                >
+                  {/^https?:\/\//i.test(String(f.value)) ? f.value : 'Open PDF resume'}
+                </Text>
+              ) : has && f.link ? (
                 <Text style={styles.link} onPress={() => Linking.openURL(String(f.value))} selectable>
                   {f.value}
                 </Text>

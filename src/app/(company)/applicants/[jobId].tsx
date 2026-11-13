@@ -2,6 +2,7 @@ import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 import React, { useCallback, useRef, useState } from 'react';
 import { StyleSheet, View, FlatList, Linking, RefreshControl } from 'react-native';
 import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
+import { openResume } from '@/lib/resume';
 import { useLoadState } from '@/hooks/useLoadState';
 import { useScreenReady } from '@/hooks/useScreenReady';
 import { SkeletonList } from '@/components/loading/Skeleton';
@@ -233,7 +234,7 @@ export default function JobApplicantsScreen() {
                   <Button
                     mode="outlined"
                     compact
-                    onPress={() => Linking.openURL(item.students!.resume_url!)}
+                    onPress={() => openResume(item.students!.resume_url).catch((e) => showAlert('Could not open resume', e?.message || 'Try again.'))}
                     icon="file-pdf-box"
                     textColor={C.accent}
                     style={styles.resumeBtn}

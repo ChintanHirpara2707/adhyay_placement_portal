@@ -4,11 +4,13 @@ import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/authStore";
 import { Theme } from "@/theme/theme";
 import { C } from "@/theme/design";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import * as DocumentPicker from "expo-document-picker";
+import { openResume, uploadResume, validatePdf } from "@/lib/resume";
+import { downloadCv } from "@/lib/cv";
 import { Controller, useForm } from "react-hook-form";
 import {
   KeyboardAvoidingView,
-  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -52,15 +54,6 @@ const profileSchema = z.object({
     .number()
     .int()
     .min(0, { message: "Backlogs cannot be negative" }),
-  resume_link: z
-    .string()
-    .trim()
-    .max(2000, { message: "Link is too long" })
-    .optional()
-    .default("")
-    .refine((v) => v === "" || z.string().url().safeParse(v).success, {
-      message: "Enter a valid URL starting with http(s)://",
-    }),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -81,6 +74,9 @@ export default function StudentProfileScreen() {
   useScreenReady(!fetching);
   const [saving, setSaving] = useState(false);
   const [savedResumeUrl, setSavedResumeUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const uploadingRef = useRef(false);
+  const [downloadingCv, setDownloadingCv] = useState(false);
   const [skills, setSkills] = useState<string[]>([]);
   const [skillsDirty, setSkillsDirty] = useState(false);
   const [skillInput, setSkillInput] = useState("");
@@ -100,14 +96,13 @@ export default function StudentProfileScreen() {
       cgpa: 0,
       phone: "",
       backlog_count: 0,
-      resume_link: "",
     },
   });
   const watchedName = watch("full_name");
   const watchedBranch = watch("branch");
   const watchedCgpa = watch("cgpa");
   const watchedPhone = watch("phone");
-  const watchedResumeLink = watch("resume_link");
+  const watchedBacklogs = watch("backlog_count");
 
   const fetchExistingProfile = async () => {
     if (!user) return;
@@ -126,7 +121,6 @@ export default function StudentProfileScreen() {
           cgpa: data.cgpa ?? 0,
           phone: data.phone ?? "",
           backlog_count: data.backlog_count ?? 0,
-          resume_link: data.resume_url ?? "",
         };
         reset(vals);
         setSkills(Array.isArray(data.skills) ? data.skills : []);
@@ -152,7 +146,7 @@ export default function StudentProfileScreen() {
       watchedCgpa,
       watchedPhone?.trim(),
       skills.length > 0 ? "x" : "",
-      watchedResumeLink?.trim(),
+      savedResumeUrl?.trim(),
     ];
     const filled = parts.filter(
       (p) => p !== "" && p !== null && p !== undefined && p !== 0,
@@ -182,9 +176,7 @@ export default function StudentProfileScreen() {
     if (!user) return;
     setSaving(true);
     try {
-      const resumeUrl = form.resume_link?.trim()
-        ? form.resume_link.trim()
-        : null;
+      // resume_url is managed by the PDF upload below, so it is deliberately not part of this update.
       const { data, error } = await supabase
         .from("students")
         .update({
@@ -194,7 +186,6 @@ export default function StudentProfileScreen() {
           phone: form.phone.trim(),
           backlog_count: form.backlog_count,
           skills,
-          resume_url: resumeUrl,
         })
         .eq("id", user.id)
         .select("id");
@@ -204,12 +195,81 @@ export default function StudentProfileScreen() {
       }
       reset(form);
       setSkillsDirty(false);
-      setSavedResumeUrl(resumeUrl);
       showAlert("Saved", "Your profile has been updated.");
     } catch (e: any) {
       showAlert("Error", e.message || "Something went wrong.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePickResume = async () => {
+    if (!user || uploadingRef.current) return;
+    uploadingRef.current = true;
+    try {
+      const picked = await DocumentPicker.getDocumentAsync({
+        type: "application/pdf",
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+      if (picked.canceled || !picked.assets?.[0]) return;
+      const file = picked.assets[0];
+      validatePdf({ uri: file.uri, name: file.name, size: file.size, mimeType: file.mimeType });
+      setUploading(true);
+      const path = await uploadResume(user.id, {
+        uri: file.uri,
+        name: file.name,
+        size: file.size,
+        mimeType: file.mimeType,
+      });
+      const { data, error } = await supabase
+        .from("students")
+        .update({ resume_url: path })
+        .eq("id", user.id)
+        .select("id");
+      if (error || !data || data.length === 0) {
+        showAlert("Resume not saved", error?.message ?? NO_ROWS_MESSAGE);
+        return;
+      }
+      setSavedResumeUrl(path);
+      showAlert("Resume uploaded", "Recruiters can now open your PDF resume.");
+    } catch (e: any) {
+      showAlert("Upload failed", e?.message || "Could not upload the resume.");
+    } finally {
+      uploadingRef.current = false;
+      setUploading(false);
+    }
+  };
+
+  const handleViewResume = async () => {
+    try {
+      await openResume(savedResumeUrl);
+    } catch (e: any) {
+      showAlert("Could not open resume", e?.message || "Try again.");
+    }
+  };
+
+  const handleDownloadCv = async () => {
+    if (downloadingCv) return;
+    if (!watchedName?.trim()) {
+      showAlert("Add your name first", "Fill in your name and details, then download your CV.");
+      return;
+    }
+    setDownloadingCv(true);
+    try {
+      await downloadCv({
+        full_name: watchedName.trim(),
+        email: user?.email,
+        phone: watchedPhone,
+        branch: watchedBranch,
+        cgpa: watchedCgpa || null,
+        backlog_count: Number(watchedBacklogs) || 0,
+        skills,
+      });
+    } catch (e: any) {
+      showAlert("Could not create CV", e?.message || "Something went wrong.");
+    } finally {
+      setDownloadingCv(false);
     }
   };
 
@@ -522,7 +582,7 @@ export default function StudentProfileScreen() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Placement Resume</Text>
               <Text style={styles.sectionSubtitle}>
-                Recruiters evaluate this link during shortlisting
+                Upload a PDF (max 5 MB). Recruiters open it during shortlisting.
               </Text>
             </View>
 
@@ -531,58 +591,53 @@ export default function StudentProfileScreen() {
                 <View style={styles.resumeBadgeRow}>
                   <View style={styles.liveIndicator} />
                   <Text style={styles.resumeBannerLabel}>
-                    ACTIVE VERIFIED LINK
+                    {/^https?:\/\//i.test(savedResumeUrl) ? "LEGACY LINK" : "PDF RESUME UPLOADED"}
                   </Text>
                 </View>
                 <Text
                   style={styles.resumeBannerLink}
                   numberOfLines={1}
-                  onPress={() => Linking.openURL(savedResumeUrl)}
+                  onPress={handleViewResume}
                 >
-                  {savedResumeUrl}
+                  {/^https?:\/\//i.test(savedResumeUrl) ? savedResumeUrl : "resume.pdf — tap to view"}
                 </Text>
               </View>
             ) : (
               <View style={styles.resumeMissingBanner}>
                 <Text style={styles.resumeMissingText}>
-                  No resume linked yet. Recruiters will not be able to
+                  No resume uploaded yet. Recruiters will not be able to
                   evaluate your profile.
                 </Text>
               </View>
             )}
 
-            <Controller
-              control={control}
-              name="resume_link"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <View style={styles.field}>
-                  <Text style={styles.label}>Drive or Portfolio URL</Text>
-                  <TextInput
-                    mode="outlined"
-                    autoCapitalize="none"
-                    keyboardType="url"
-                    placeholder="https://drive.google.com/..."
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                    error={!!errors.resume_link}
-                    style={styles.input}
-                    outlineColor={C.line}
-                    activeOutlineColor={Theme.colors.primaryAccent}
-                  />
-                  {errors.resume_link ? (
-                    <HelperText type="error" visible>
-                      {errors.resume_link.message}
-                    </HelperText>
-                  ) : (
-                    <HelperText type="info" visible style={styles.helperText}>
-                      Ensure sharing is set to “Anyone with the link can view”
-                      to prevent access failures.
-                    </HelperText>
-                  )}
-                </View>
-              )}
-            />
+            <Button
+              mode="outlined"
+              icon="file-upload-outline"
+              onPress={handlePickResume}
+              loading={uploading}
+              disabled={uploading}
+              textColor={Theme.colors.primaryAccent}
+              style={styles.resumeBtn}
+              contentStyle={styles.resumeBtnContent}
+            >
+              {savedResumeUrl ? "Replace PDF" : "Upload PDF"}
+            </Button>
+            <Button
+              mode="outlined"
+              icon="file-download-outline"
+              onPress={handleDownloadCv}
+              loading={downloadingCv}
+              disabled={downloadingCv}
+              textColor={Theme.colors.primaryAccent}
+              style={styles.resumeBtn}
+              contentStyle={styles.resumeBtnContent}
+            >
+              Download CV
+            </Button>
+            <HelperText type="info" visible style={styles.helperText}>
+              “Download CV” builds a one-page PDF from the details above (save your changes first).
+            </HelperText>
           </Card.Content>
         </Card>
       </ScrollView>
@@ -870,6 +925,13 @@ const styles = StyleSheet.create({
     color: C.warning,
     fontWeight: "500",
     lineHeight: 18,
+  },
+  resumeBtn: {
+    borderRadius: 10,
+    borderColor: C.line,
+  },
+  resumeBtnContent: {
+    minHeight: 46,
   },
   helperText: {
     fontSize: 11,

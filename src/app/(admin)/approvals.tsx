@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { StyleSheet, View, FlatList, RefreshControl } from 'react-native';
 import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
 import { useLoadState } from '@/hooks/useLoadState';
@@ -18,9 +19,8 @@ interface PendingCompany {
   company_name: string;
   description: string;
   website: string;
-  users: {
-    email: string;
-  } | null;
+  /** Best effort: stays null when the admin cannot read `users` (see supabase/17-admin-users-read.sql). Never hides the row. */
+  email: string | null;
 }
 
 export default function ApprovalsScreen() {
@@ -31,23 +31,31 @@ export default function ApprovalsScreen() {
   const fetchPendingCompanies = async (isRefresh = false) => {
     begin(isRefresh);
     try {
+      // Same definition of "pending" as the dashboard badge: not approved and not rejected (a rejected company
+      // leaves the queue until it resubmits).
       const { data, error } = await supabase
         .from('companies')
-        .select(`
-          id,
-          company_name,
-          description,
-          website,
-          users (
-            email
-          )
-        `)
+        .select('id, company_name, description, website')
         .eq('approved', false)
-        .is('rejection_reason', null); // rejected companies leave the queue until they resubmit
+        .is('rejection_reason', null);
 
       if (error) throw error;
 
-      setCompanies(data as any[] || []);
+      const rows = (data as any[]) ?? [];
+
+      // Emails come from a separate, best-effort query. A blocked/failed lookup must never drop a company
+      // from the queue (an embedded users(...) select hides or breaks rows when RLS denies the join).
+      const emails = new Map<string, string>();
+      if (rows.length > 0) {
+        const { data: userRows, error: userError } = await supabase
+          .from('users')
+          .select('id, email')
+          .in('id', rows.map((r) => r.id));
+        if (userError) console.warn('[approvals] could not read company emails:', userError.message);
+        else ((userRows as any[]) ?? []).forEach((u) => u.email && emails.set(u.id, u.email));
+      }
+
+      setCompanies(rows.map((r) => ({ ...r, email: emails.get(r.id) ?? null })));
       succeed();
     } catch (e: any) {
       fail(e);
@@ -56,9 +64,12 @@ export default function ApprovalsScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchPendingCompanies();
-  }, []);
+  // Tabs stay mounted, so a mount-only load goes stale: reload every time this screen is visited.
+  useFocusEffect(
+    useCallback(() => {
+      fetchPendingCompanies();
+    }, [])
+  );
 
   // Live: a company that just registered (or was decided on another device) appears / disappears.
   useRealtimeRefresh([{ table: 'companies' }], () => fetchPendingCompanies());
@@ -199,7 +210,7 @@ export default function ApprovalsScreen() {
                 {item.company_name || 'Unnamed Company'}
               </Text>
               <Text style={styles.emailText} numberOfLines={1}>
-                {item.users?.email || 'No email associated'}
+                {item.email || 'No email associated'}
               </Text>
               {item.website ? (
                 <Text style={styles.websiteText} numberOfLines={1}>

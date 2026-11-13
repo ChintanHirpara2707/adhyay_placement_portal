@@ -1,8 +1,9 @@
 import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 import React, { useCallback, useRef, useState } from 'react';
-import { StyleSheet, View, FlatList, Linking, RefreshControl } from 'react-native';
+import { StyleSheet, View, FlatList, RefreshControl } from 'react-native';
 import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
 import { openResume } from '@/lib/resume';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { useLoadState } from '@/hooks/useLoadState';
 import { useScreenReady } from '@/hooks/useScreenReady';
 import { SkeletonList } from '@/components/loading/Skeleton';
@@ -100,6 +101,9 @@ export default function JobApplicantsScreen() {
       fetchApplicantsForJob();
     }, [jobId])
   );
+
+  // Live: new registrations and status changes for this drive.
+  useRealtimeRefresh([{ table: 'applications', filter: `job_id=eq.${jobId}` }], () => fetchApplicantsForJob(), { enabled: !!jobId });
 
   // Applicant ids with a status change in flight, so a double tap cannot send two updates/notifications.
   const busyRef = useRef<Set<string>>(new Set());

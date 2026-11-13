@@ -1,19 +1,21 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, FlatList, RefreshControl } from 'react-native';
-import { useFocusEffect } from 'expo-router';
 import { Text, TextInput } from 'react-native-paper';
 import { showAlert } from '@/lib/alert';
-import { useLoadState } from '@/hooks/useLoadState';
+import { useDebouncedValue, usePaginatedList } from '@/hooks/usePaginatedList';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { sanitizeSearchTerm } from '@/lib/adminFilters';
+import { PagedFooter } from '@/components/ui/PagedFooter';
 import { useScreenReady } from '@/hooks/useScreenReady';
 import { SkeletonList } from '@/components/loading/Skeleton';
 import { LoadError } from '@/components/loading/LoadError';
 import { Button } from '@/components/ui/AppButton';
 import { AdminDetailView } from '@/components/admin/AdminDetailView';
-import { removeUser, setDebarred } from '@/lib/adminManage';
+import { DebarHistoryRow, fetchDebarHistory, removeUser, setDebarred } from '@/lib/adminManage';
 import { supabase } from '@/lib/supabase';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
-import { EmptyState, PageHeader, StatusChip, pageColumn } from '@/components/ui/kit';
+import { EmptyState, FilterChips, PageHeader, StatusChip, pageColumn } from '@/components/ui/kit';
 
 interface Company {
   id: string;
@@ -22,52 +24,75 @@ interface Company {
   website: string | null;
   approved: boolean | null;
   debarred: boolean | null;
-  users: { email: string; created_at?: string | null } | null;
+  debar_reason: string | null;
+  rejection_reason: string | null;
+  email: string | null;
+  registered_at: string | null;
 }
 
 const statusOf = (c: Company): { label: string; tone: 'success' | 'warning' | 'danger' } =>
-  c.debarred ? { label: 'Debarred', tone: 'danger' } : c.approved ? { label: 'Approved', tone: 'success' } : { label: 'Pending', tone: 'warning' };
+  c.debarred
+    ? { label: 'Debarred', tone: 'danger' }
+    : c.approved
+      ? { label: 'Approved', tone: 'success' }
+      : c.rejection_reason
+        ? { label: 'Rejected', tone: 'danger' }
+        : { label: 'Pending', tone: 'warning' };
 
 export default function CompaniesScreen() {
-  const { loading, refreshing, error: loadError, begin, succeed, fail, end } = useLoadState('companies');
-  useScreenReady(!loading);
-  const [companies, setCompanies] = useState<Company[]>([]);
   const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'pending' | 'rejected' | 'debarred'>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState<'debar' | 'remove' | null>(null);
   const busyRef = useRef(false);
+  const debouncedQuery = useDebouncedValue(query, 350);
 
-  const load = useCallback(
-    async (isRefresh = false) => {
-      begin(isRefresh);
-      try {
-        const { data, error } = await supabase
-          .from('companies')
-          .select('id, company_name, description, website, approved, debarred, users(email, created_at)')
-          .order('company_name', { ascending: true });
+  // Search + status run in the database (view `admin_company_list`), 20 rows per page.
+  const { rows: companies, setRows: setCompanies, total, loading, refreshing, loadingMore, error: loadError, moreError, hasMore, loadMore, retryMore, refresh, reload } =
+    usePaginatedList<Company>(
+      async (from, to) => {
+        let qy = supabase.from('admin_company_list').select('*', { count: 'exact' });
+        const term = sanitizeSearchTerm(debouncedQuery);
+        if (term) qy = qy.or(`company_name.ilike.%${term}%,email.ilike.%${term}%`);
+        // Same precedence as the status chip: debarred, then approved, then rejected, then pending.
+        if (statusFilter === 'debarred') qy = qy.eq('debarred', true);
+        else if (statusFilter === 'approved') qy = qy.eq('debarred', false).eq('approved', true);
+        else if (statusFilter === 'rejected') qy = qy.eq('debarred', false).eq('approved', false).not('rejection_reason', 'is', null);
+        else if (statusFilter === 'pending') qy = qy.eq('debarred', false).eq('approved', false).is('rejection_reason', null);
+        const { data, error, count } = await qy
+          .order('company_name', { ascending: true, nullsFirst: false })
+          .order('id', { ascending: true })
+          .range(from, to);
         if (error) throw error;
-        setCompanies((data as any[]) ?? []);
-        succeed();
-      } catch (e: any) {
-        fail(e);
-      } finally {
-        end();
-      }
-    },
-    [begin, succeed, fail, end]
-  );
+        return { rows: (data as Company[]) ?? [], total: count ?? null };
+      },
+      [debouncedQuery, statusFilter],
+      { reloadOnFocus: true }
+    );
+  useScreenReady(!loading);
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
-  );
+  // Live: new registrations, approvals and rejections.
+  useRealtimeRefresh([{ table: 'companies' }], reload);
 
-  const q = query.trim().toLowerCase();
-  const filtered = q
-    ? companies.filter((c) => (c.company_name ?? '').toLowerCase().includes(q) || (c.users?.email ?? '').toLowerCase().includes(q))
-    : companies;
+  const filtered = companies;
+  const filtersActive = query.trim() !== '' || statusFilter !== 'all';
+  const clearFilters = () => {
+    setQuery('');
+    setStatusFilter('all');
+  };
   const selected = companies.find((c) => c.id === selectedId) ?? null;
+  const [history, setHistory] = useState<DebarHistoryRow[] | null | 'error'>(null);
+
+  const loadHistory = (id: string) => {
+    setHistory(null);
+    fetchDebarHistory(id)
+      .then(setHistory)
+      .catch(() => setHistory('error'));
+  };
+
+  useEffect(() => {
+    if (selectedId) loadHistory(selectedId);
+  }, [selectedId]);
 
   const runAction = async (kind: 'debar' | 'remove', fn: () => Promise<void>, done: () => void) => {
     if (busyRef.current) return;
@@ -84,12 +109,12 @@ export default function CompaniesScreen() {
     }
   };
 
-  const toggleDebar = (c: Company) => {
+  const toggleDebar = (c: Company, reason: string) => {
     const next = !c.debarred;
     showAlert(
       next ? 'Debar company?' : 'Undebar company?',
       next
-        ? `${c.company_name || 'This company'} will be signed out and blocked from logging in and posting drives.`
+        ? `${c.company_name || 'This company'} will be blocked from logging in and posting drives. They will see this reason: "${reason}"`
         : `${c.company_name || 'This company'} will be able to log in and post drives again.`,
       [
         { text: 'Cancel', style: 'cancel' },
@@ -99,8 +124,11 @@ export default function CompaniesScreen() {
           onPress: () =>
             runAction(
               'debar',
-              () => setDebarred('companies', c.id, next),
-              () => setCompanies((prev) => prev.map((x) => (x.id === c.id ? { ...x, debarred: next } : x)))
+              () => setDebarred('companies', c.id, next, reason),
+              () => {
+                setCompanies((prev) => prev.map((x) => (x.id === c.id ? { ...x, debarred: next, debar_reason: next ? reason : null } : x)));
+                loadHistory(c.id);
+              }
             ),
         },
       ]
@@ -137,23 +165,26 @@ export default function CompaniesScreen() {
         <TopNavbar title="Companies" subtitle="Company details" showBack />
         <AdminDetailView
           title={selected.company_name || 'Unnamed Company'}
-          subtitle={selected.users?.email || 'No email'}
+          subtitle={selected.email || 'No email'}
           chips={[
             { label: selected.approved ? 'Approved' : 'Pending approval', tone: selected.approved ? 'success' : 'warning' },
             ...(selected.debarred ? [{ label: 'Debarred', tone: 'danger' as const }] : []),
           ]}
           fields={[
             { label: 'Company ID', value: selected.id },
-            { label: 'Email', value: selected.users?.email },
+            { label: 'Email', value: selected.email },
             { label: 'Website', value: selected.website, link: true },
             { label: 'Description', value: selected.description },
             { label: 'Status', value: st.label },
-            { label: 'Registered', value: selected.users?.created_at ? new Date(selected.users.created_at).toLocaleString() : null },
+            { label: 'Rejection reason', value: selected.rejection_reason },
+            { label: 'Registered', value: selected.registered_at ? new Date(selected.registered_at).toLocaleString() : null },
           ]}
           debarred={!!selected.debarred}
+          debarReason={selected.debar_reason}
+          history={history}
           busy={busy}
           onBack={() => setSelectedId(null)}
-          onToggleDebar={() => toggleDebar(selected)}
+          onToggleDebar={(reason) => toggleDebar(selected, reason)}
           onRemove={() => removeCompany(selected)}
         />
       </View>
@@ -163,7 +194,16 @@ export default function CompaniesScreen() {
   return (
     <View style={styles.container}>
       <TopNavbar title="Companies" subtitle="Directory & status" showBack />
-      <PageHeader title="Companies" subtitle={`${filtered.length} ${filtered.length === 1 ? 'company' : 'companies'} registered`} />
+      <PageHeader
+        title="Companies"
+        subtitle={
+          loading
+            ? 'Loading…'
+            : filtersActive
+              ? `${total ?? companies.length} ${(total ?? companies.length) === 1 ? 'company matches' : 'companies match'}`
+              : `${total ?? companies.length} ${(total ?? companies.length) === 1 ? 'company' : 'companies'} registered`
+        }
+      />
       <View style={styles.searchWrap}>
         <TextInput
           placeholder="Search by name or email"
@@ -177,20 +217,36 @@ export default function CompaniesScreen() {
           outlineStyle={{ borderRadius: 10, borderWidth: 1 }}
         />
       </View>
+      <FilterChips
+        value={statusFilter}
+        onChange={setStatusFilter}
+        options={[
+          { value: 'all', label: 'All' },
+          { value: 'approved', label: 'Approved' },
+          { value: 'pending', label: 'Pending' },
+          { value: 'rejected', label: 'Rejected' },
+          { value: 'debarred', label: 'Debarred' },
+        ]}
+      />
       {loading ? (
         <View style={styles.list}>
           <SkeletonList count={3} variant="job" />
         </View>
       ) : loadError ? (
         <View style={styles.list}>
-          <LoadError message={loadError} onRetry={() => load()} />
+          <LoadError message={loadError} onRetry={refresh} />
         </View>
       ) : (
         <FlatList
           data={filtered}
           keyExtractor={(c) => c.id}
           contentContainerStyle={styles.list}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={C.accent} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.accent} />}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            <PagedFooter loadingMore={loadingMore} moreError={moreError} hasMore={hasMore} onRetry={retryMore} shown={companies.length} total={total} />
+          }
           renderItem={({ item }) => {
             const st = statusOf(item);
             return (
@@ -201,7 +257,7 @@ export default function CompaniesScreen() {
                       {item.company_name || 'Unnamed Company'}
                     </Text>
                     <Text style={styles.email} numberOfLines={1}>
-                      {item.users?.email || 'No email'}
+                      {item.email || 'No email'}
                     </Text>
                   </View>
                   <StatusChip label={st.label} tone={st.tone} />
@@ -216,7 +272,14 @@ export default function CompaniesScreen() {
             <EmptyState
               icon="domain"
               title={companies.length === 0 ? 'No companies yet' : 'No companies found'}
-              hint={companies.length === 0 ? 'Companies appear here once they register.' : 'Try a different search.'}
+              hint={companies.length === 0 ? 'Companies appear here once they register.' : 'No company matches these filters.'}
+              action={
+                filtersActive && companies.length > 0 ? (
+                  <Button mode="outlined" onPress={clearFilters} textColor={C.accent} style={styles.open}>
+                    Clear filters
+                  </Button>
+                ) : undefined
+              }
             />
           }
         />

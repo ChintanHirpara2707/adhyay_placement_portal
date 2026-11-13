@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { StyleSheet, View, FlatList, RefreshControl, Linking } from 'react-native';
 import { Text, SegmentedButtons, Button } from 'react-native-paper';
 import { useFocusEffect } from 'expo-router';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useAuthStore } from '@/store/authStore';
 import { C } from '@/theme/design';
@@ -51,6 +52,13 @@ export default function StudentInterviewsScreen() {
     }, [load])
   );
 
+  // Live: a company scheduling, rescheduling, cancelling or marking a round shows up at once.
+  useRealtimeRefresh(
+    [{ table: 'interviews' }, { table: 'applications', filter: `student_id=eq.${user?.id}` }],
+    () => load(false),
+    { enabled: !!user }
+  );
+
   const { upcoming, past } = splitInterviews(interviews);
   const visible = tab === 'upcoming' ? upcoming : past;
 
@@ -91,9 +99,10 @@ export default function StudentInterviewsScreen() {
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={C.accent} />}
           renderItem={({ item }) => {
-            const result = item.result ? RESULT_LABEL[item.result] : undefined;
+            const cancelled = item.status === 'cancelled';
+            const result = !cancelled && item.result ? RESULT_LABEL[item.result] : undefined;
             return (
-              <View style={styles.card}>
+              <View style={[styles.card, cancelled && styles.cardCancelled]}>
                 <View style={styles.headerRow}>
                   <Text style={styles.job} numberOfLines={2}>
                     {item.jobTitle}
@@ -113,7 +122,13 @@ export default function StudentInterviewsScreen() {
                   <MaterialCommunityIcons name="calendar-clock-outline" size={16} color={C.accentStrong} />
                   <Text style={styles.date}>{formatDateTime(item.date_time)}</Text>
                 </View>
+                {cancelled ? <StatusChip label="Cancelled" tone="danger" /> : null}
                 {result ? <StatusChip label={result.label} tone={result.tone} /> : null}
+                {item.reschedule_note?.trim() ? (
+                  <Text style={styles.updateNote}>
+                    {cancelled ? 'Reason' : 'Update from company'}: {item.reschedule_note.trim()}
+                  </Text>
+                ) : null}
                 {item.notes?.trim() ? (
                   <View style={styles.notesBox}>
                     <Text style={styles.notesLabel}>Meeting instructions & notes</Text>
@@ -160,6 +175,8 @@ const styles = StyleSheet.create({
   toggleWrap: { ...pageColumn(720), paddingTop: 8, paddingBottom: 12 },
   list: { ...pageColumn(720), paddingBottom: 24, gap: 12 },
   card: { backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 16, gap: 6 },
+  cardCancelled: { opacity: 0.75 },
+  updateNote: { fontSize: 13, color: C.warning, lineHeight: 19 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
   job: { flex: 1, minWidth: 0, fontSize: 16, fontWeight: '600', color: C.ink, letterSpacing: -0.2 },
   company: { fontSize: 14, color: C.muted },

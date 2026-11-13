@@ -9,6 +9,10 @@ export interface StudentInterview {
   mode: string;
   notes: string | null;
   result: string | null;
+  /** 'scheduled' | 'cancelled' */
+  status: string;
+  /** Company's reason for the latest reschedule / cancellation, if any. */
+  reschedule_note: string | null;
   jobTitle: string;
   companyName: string;
   totalRounds: number;
@@ -33,7 +37,7 @@ export async function fetchStudentInterviews(studentId: string): Promise<Student
   const meta = new Map(appList.map((a) => [a.id, a]));
   const { data: ivs, error: ivError } = await supabase
     .from('interviews')
-    .select('id, application_id, round_number, date_time, mode, notes, result')
+    .select('id, application_id, round_number, date_time, mode, notes, result, status, reschedule_note')
     .in('application_id', appList.map((a) => a.id))
     .order('date_time', { ascending: true });
   if (ivError) throw ivError;
@@ -49,6 +53,8 @@ export async function fetchStudentInterviews(studentId: string): Promise<Student
       mode: v.mode,
       notes: v.notes,
       result: v.result ?? null,
+      status: v.status ?? 'scheduled',
+      reschedule_note: v.reschedule_note ?? null,
       jobTitle: job?.title ?? 'Interview',
       companyName: job?.companies?.company_name ?? '',
       totalRounds: job?.total_rounds ?? 1,
@@ -57,10 +63,14 @@ export async function fetchStudentInterviews(studentId: string): Promise<Student
   });
 }
 
-/** Upcoming = starts now or later. Past = already started. Uses the same timezone-safe parse as everything else. */
-export function splitInterviews<T extends { date_time: string }>(list: T[], now = Date.now()) {
+/**
+ * Upcoming = starts now or later AND not cancelled. Past = already started, or cancelled (so a cancelled
+ * interview leaves the upcoming list and the dashboard count). Same timezone-safe parse as everything else.
+ */
+export function splitInterviews<T extends { date_time: string; status?: string }>(list: T[], now = Date.now()) {
+  const isUpcoming = (v: T) => v.status !== 'cancelled' && parseDbDate(v.date_time).getTime() >= now;
   return {
-    upcoming: list.filter((v) => parseDbDate(v.date_time).getTime() >= now),
-    past: list.filter((v) => parseDbDate(v.date_time).getTime() < now).reverse(),
+    upcoming: list.filter(isUpcoming),
+    past: list.filter((v) => !isUpcoming(v)).reverse(),
   };
 }

@@ -8,6 +8,7 @@ import { SkeletonList } from '@/components/loading/Skeleton';
 import { LoadError } from '@/components/loading/LoadError';
 import { Text, Button, Banner, Searchbar, IconButton } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useFeedStore } from '@/store/feedStore';
@@ -15,6 +16,7 @@ import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
 import { JobCardSkeleton } from '@/components/SkeletonLoader';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
+import { CompanyLogo } from '@/components/ui/CompanyLogo';
 import { StatusChip, EmptyState, PageHeader, FilterChips, pageColumn } from '@/components/ui/kit';
 import { formatCTC, formatDeadline, isDeadlineUrgent, parseDbDate } from '@/lib/format';
 
@@ -28,7 +30,7 @@ interface JobPosting {
   backlog_allowed: boolean;
   deadline: string;
   isApplied?: boolean;
-  companies: { company_name: string } | null;
+  companies: { company_name: string; logo_url?: string | null } | null;
 }
 
 export default function StudentJobsScreen() {
@@ -54,7 +56,7 @@ export default function StudentJobsScreen() {
   };
 
   const fetchOpenJobs = async () => {
-    const { data, error } = await supabase.from('job_postings').select('*, companies(company_name)').eq('status', 'open');
+    const { data, error } = await supabase.from('job_postings').select('*, companies(company_name, logo_url)').eq('status', 'open');
     if (error) throw error;
     return (data as any[]) ?? [];
   };
@@ -113,6 +115,13 @@ export default function StudentJobsScreen() {
     useCallback(() => {
       loadData();
     }, [user])
+  );
+
+  // Live: newly posted / closed drives and your own registrations.
+  useRealtimeRefresh(
+    [{ table: 'job_postings' }, { table: 'applications', filter: `student_id=eq.${user?.id}` }],
+    () => loadData(),
+    { enabled: !!user }
   );
 
   const searchFilter = (list: JobPosting[]) => {
@@ -195,7 +204,10 @@ export default function StudentJobsScreen() {
                       onPress={() => user && setSaved(user.id, item.id, !savedIds.includes(item.id))}
                     />
                   </View>
-                  <Text style={styles.companyName} numberOfLines={1}>{(item.companies as any)?.company_name ?? 'Unknown Company'}</Text>
+                  <View style={styles.companyRow}>
+                    <CompanyLogo uri={item.companies?.logo_url} name={item.companies?.company_name} size={32} />
+                    <Text style={styles.companyName} numberOfLines={1}>{item.companies?.company_name ?? 'Unknown Company'}</Text>
+                  </View>
                   <View style={styles.infoRow}>
                     <StatusChip label={formatCTC(item.ctc)} tone="accent" />
                     <StatusChip label={`Deadline: ${formatDeadline(item.deadline)}`} tone={urgent ? 'warning' : 'muted'} />
@@ -236,7 +248,8 @@ const styles = StyleSheet.create({
   card: { backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 16, gap: 8 },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
   jobTitle: { fontSize: 16, fontWeight: '600', color: C.ink, flex: 1, minWidth: 0, flexShrink: 1, letterSpacing: -0.3 },
-  companyName: { fontSize: 14, color: C.muted },
+  companyRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  companyName: { flex: 1, minWidth: 0, fontSize: 14, color: C.muted },
   infoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 },
   bookmark: { margin: -8 },
   retryButton: { borderRadius: 12, borderColor: C.line, marginTop: 12 },

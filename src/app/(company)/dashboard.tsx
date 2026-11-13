@@ -1,6 +1,7 @@
 import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, View, RefreshControl, TouchableOpacity } from 'react-native';
+import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
 import { useLoadState } from '@/hooks/useLoadState';
 import { useScreenReady } from '@/hooks/useScreenReady';
 import { Skeleton, SkeletonCard, SkeletonList } from '@/components/loading/Skeleton';
@@ -8,6 +9,7 @@ import { LoadError } from '@/components/loading/LoadError';
 import { Text } from 'react-native-paper';
 import { Button } from '@/components/ui/AppButton';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { MotiView } from 'moti';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { supabase } from '@/lib/supabase';
@@ -46,6 +48,8 @@ export default function CompanyDashboard() {
   useScreenReady(!loading);
   const [approved, setApproved] = useState<boolean | null>(null);
   const [companyName, setCompanyName] = useState('');
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
+  const [resubmitting, setResubmitting] = useState(false);
   const [activeJobs, setActiveJobs] = useState(0);
   const [totalApplicants, setTotalApplicants] = useState(0);
   const [shortlisted, setShortlisted] = useState(0);
@@ -53,8 +57,9 @@ export default function CompanyDashboard() {
 
   const checkApprovalStatus = useCallback(async () => {
     if (!user) return false;
-    const { data, error } = await supabase.from('companies').select('approved, company_name').eq('id', user.id).maybeSingle();
+    const { data, error } = await supabase.from('companies').select('approved, company_name, rejection_reason').eq('id', user.id).maybeSingle();
     if (error) throw error;
+    setRejectionReason(((data as any)?.rejection_reason ?? '').trim() || null);
     setApproved((data as any)?.approved ?? false);
     setCompanyName((data as any)?.company_name ?? '');
     return (data as any)?.approved === true;
@@ -125,6 +130,42 @@ export default function CompanyDashboard() {
     }, [loadAll])
   );
 
+  // Live: new applicants, job changes and — importantly — the admin's approval / rejection decision.
+  useRealtimeRefresh(
+    [
+      { table: 'applications' },
+      { table: 'job_postings', filter: `company_id=eq.${user?.id}` },
+      { table: 'companies', filter: `id=eq.${user?.id}` },
+    ],
+    () => loadAll(false),
+    { enabled: !!user }
+  );
+
+  // Clearing the reason puts the company back in the admin's pending queue.
+  const resubmit = async () => {
+    if (!user || resubmitting) return;
+    setResubmitting(true);
+    try {
+      const { data, error } = await supabase.from('companies').update({ rejection_reason: null }).eq('id', user.id).select('id');
+      if (error || !data || data.length === 0) {
+        showAlert('Could not resubmit', error?.message ?? NO_ROWS_MESSAGE);
+        return;
+      }
+      setRejectionReason(null);
+      showAlert('Resubmitted', 'Your company was sent back to the placement cell for review.');
+    } catch (e: any) {
+      showAlert('Error', e?.message || 'Something went wrong.');
+    } finally {
+      setResubmitting(false);
+    }
+  };
+
+  const confirmResubmit = () =>
+    showAlert('Resubmit for review?', 'Make sure you have updated your company profile first. The placement cell will review it again.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Resubmit', onPress: resubmit },
+    ]);
+
   return (
     <View style={styles.shell}>
       <TopNavbar title="Dashboard" subtitle={companyName || 'Recruiter overview'} />
@@ -138,18 +179,50 @@ export default function CompanyDashboard() {
         ) : approved === false ? (
           <MotiView from={{ opacity: 0, translateY: 12 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 300 }}>
             <Card>
-              <View style={styles.pendingContent}>
-                <View style={styles.pendingIcon}>
-                  <MaterialCommunityIcons name="clock-outline" size={24} color={C.warning} />
+              {rejectionReason ? (
+                <View style={styles.pendingContent}>
+                  <View style={[styles.pendingIcon, styles.rejectedIcon]}>
+                    <MaterialCommunityIcons name="close-circle-outline" size={24} color={C.danger} />
+                  </View>
+                  <Text style={styles.pendingTitle}>Registration not approved</Text>
+                  <Text style={styles.pendingText}>The placement cell gave this reason:</Text>
+                  <View style={styles.reasonBox}>
+                    <Text style={styles.reasonText} selectable>
+                      {rejectionReason}
+                    </Text>
+                  </View>
+                  <Text style={styles.pendingText}>Update your company profile, then resubmit it for review.</Text>
+                  <View style={styles.rejectActions}>
+                    <Button mode="outlined" onPress={() => nav.push('/(company)/profile' as any)} textColor={C.accent} style={styles.checkBtn}>
+                      Edit profile
+                    </Button>
+                    <Button
+                      mode="contained"
+                      onPress={confirmResubmit}
+                      loading={resubmitting}
+                      disabled={resubmitting}
+                      buttonColor={C.accent}
+                      textColor="#FFFFFF"
+                      style={styles.checkBtn}
+                    >
+                      Resubmit for review
+                    </Button>
+                  </View>
                 </View>
-                <Text style={styles.pendingTitle}>Approval pending</Text>
-                <Text style={styles.pendingText}>
-                  Your company profile is awaiting administrator review. You can post jobs after approval.
-                </Text>
-                <Button mode="outlined" onPress={() => loadAll(true)} textColor={C.accent} style={styles.checkBtn}>
-                  Check Approval Status
-                </Button>
-              </View>
+              ) : (
+                <View style={styles.pendingContent}>
+                  <View style={styles.pendingIcon}>
+                    <MaterialCommunityIcons name="clock-outline" size={24} color={C.warning} />
+                  </View>
+                  <Text style={styles.pendingTitle}>Approval pending</Text>
+                  <Text style={styles.pendingText}>
+                    Your company profile is awaiting administrator review. You can post jobs after approval.
+                  </Text>
+                  <Button mode="outlined" onPress={() => loadAll(true)} textColor={C.accent} style={styles.checkBtn}>
+                    Check Approval Status
+                  </Button>
+                </View>
+              )}
             </Card>
           </MotiView>
         ) : (
@@ -227,6 +300,10 @@ const styles = StyleSheet.create({
   pendingTitle: { fontSize: 20, fontWeight: '700', color: C.ink, letterSpacing: -0.3 },
   pendingText: { fontSize: 15, color: C.muted, textAlign: 'center', lineHeight: 22, maxWidth: 420 },
   checkBtn: { borderRadius: 10, marginTop: 8, borderColor: C.line },
+  rejectedIcon: { backgroundColor: C.dangerSoft },
+  reasonBox: { alignSelf: 'stretch', backgroundColor: C.dangerSoft, borderWidth: 1, borderColor: C.line, borderRadius: 10, padding: 12 },
+  reasonText: { fontSize: 15, color: C.ink, lineHeight: 22 },
+  rejectActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
   actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   actionBtn: { flexGrow: 1, flexBasis: 150, borderRadius: 10 },
   actionOutline: { borderColor: C.line },

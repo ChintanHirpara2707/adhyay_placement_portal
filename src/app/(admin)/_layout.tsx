@@ -78,6 +78,13 @@ export default function AdminLayout() {
         }}
       />
       <Tabs.Screen
+        name="queries"
+        options={{
+          href: null,
+          title: 'Queries',
+        }}
+      />
+      <Tabs.Screen
         name="broadcast"
         options={{
           href: null,

@@ -14,6 +14,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useFeedStore } from '@/store/feedStore';
 import { C } from '@/theme/design';
 import { TopNavbar } from '@/components/TopNavbar';
+import { CompanyLogo } from '@/components/ui/CompanyLogo';
 import { Screen } from '@/components/ui/Screen';
 import { Card, StatusChip, EmptyState } from '@/components/ui/kit';
 import { formatCTC, isDeadlinePassed } from '@/lib/format';
@@ -38,6 +39,7 @@ interface JobDetails {
     company_name: string;
     description: string | null;
     website: string | null;
+    logo_url?: string | null;
   } | null;
 }
 
@@ -120,7 +122,7 @@ export default function JobDetailsScreen() {
     const { data: jobData, error: jobError } = await supabase
       .from('job_postings')
       .select(
-        'id, title, description, ctc, min_cgpa, eligible_branches, backlog_allowed, deadline, status, job_profiles, stipend, bond_years, location, round_names, round_dates, companies (company_name, description, website)'
+        'id, title, description, ctc, min_cgpa, eligible_branches, backlog_allowed, deadline, status, job_profiles, stipend, bond_years, location, round_names, round_dates, companies (company_name, description, website, logo_url)'
       )
       .eq('id', id)
       .maybeSingle();
@@ -274,6 +276,7 @@ export default function JobDetailsScreen() {
           <Card style={styles.sheet}>
             {/* 1. HEADER */}
             <View style={styles.headerBlock}>
+              <CompanyLogo uri={job.companies?.logo_url} name={companyName} size={72} />
               <Text style={styles.eyebrow}>Campus Placement Drive</Text>
               <Text style={styles.driveTitle}>{companyName.toUpperCase()}</Text>
               <Text style={styles.driveSubtitle}>Invitation for eligible students</Text>

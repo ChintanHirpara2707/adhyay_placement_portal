@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, ScrollView, RefreshControl } from 'react-native';
 import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
 import { useLoadState } from '@/hooks/useLoadState';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { useScreenReady } from '@/hooks/useScreenReady';
 import { SkeletonList } from '@/components/loading/Skeleton';
 import { LoadError } from '@/components/loading/LoadError';
@@ -70,6 +71,9 @@ export default function JobsScreen() {
   useEffect(() => {
     fetchAllJobs();
   }, []);
+
+  // Live: drives posted, closed or edited anywhere.
+  useRealtimeRefresh([{ table: 'job_postings' }], () => fetchAllJobs());
 
   const searchFilter = (list: JobPosting[]) => {
     const q = query.trim().toLowerCase();

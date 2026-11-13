@@ -9,6 +9,7 @@ import { dashboardFor } from '@/lib/authSession';
 import { UserRole, useAuthStore } from '@/store/authStore';
 import { C } from '@/theme/design';
 import { AuthLayout } from '@/components/ui/AuthLayout';
+import { ConsentCheckbox } from '@/components/ui/ConsentCheckbox';
 import { Field, authInputProps, AuthPrimaryButton, authCardStyles } from '@/components/ui/AuthField';
 
 type ChosenRole = 'student' | 'company';
@@ -34,6 +35,8 @@ export default function ChooseRoleScreen() {
   const [companyName, setCompanyName] = useState('');
   const [companyError, setCompanyError] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
+  const [accepted, setAccepted] = useState(false);
+  const [consentError, setConsentError] = useState<string | undefined>();
   const busy = useRef(false);
 
   // Only a signed-in user without a users row belongs here (the global gate enforces this too).
@@ -54,12 +57,20 @@ export default function ChooseRoleScreen() {
       return;
     }
     setCompanyError(undefined);
+    if (!accepted) {
+      setConsentError('Please accept the Terms of Use and Privacy Policy to continue');
+      return;
+    }
+    setConsentError(undefined);
     busy.current = true;
     setSaving(true);
     try {
       let finalRole: UserRole = role;
 
-      const { error: userError } = await supabase.from('users').insert({ id: user.id, email, role });
+      // consent_at is re-stamped with the server's clock by a database trigger, so it cannot be backdated.
+      const { error: userError } = await supabase
+        .from('users')
+        .insert({ id: user.id, email, role, consent_at: new Date().toISOString() });
       if (userError) {
         if (userError.code !== UNIQUE_VIOLATION) throw userError;
         // A row already exists (double tap / retry / another device): keep whatever role it has.
@@ -137,6 +148,15 @@ export default function ChooseRoleScreen() {
           ? 'Company accounts are reviewed by the placement cell before you can post jobs.'
           : 'You can complete your academic profile after continuing.'}
       </Text>
+
+      <ConsentCheckbox
+        checked={accepted}
+        onChange={(v) => {
+          setAccepted(v);
+          if (v) setConsentError(undefined);
+        }}
+        error={consentError}
+      />
 
       <AuthPrimaryButton title="Continue" loading={saving} disabled={saving} onPress={onContinue} />
 

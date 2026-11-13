@@ -2,10 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, FlatList, RefreshControl } from 'react-native';
 import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
 import { useLoadState } from '@/hooks/useLoadState';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { useScreenReady } from '@/hooks/useScreenReady';
 import { SkeletonList } from '@/components/loading/Skeleton';
 import { LoadError } from '@/components/loading/LoadError';
-import { Text } from 'react-native-paper';
+import { Text, TextInput } from 'react-native-paper';
 import { Button } from '@/components/ui/AppButton';
 import { supabase } from '@/lib/supabase';
 import { C } from '@/theme/design';
@@ -41,7 +42,8 @@ export default function ApprovalsScreen() {
             email
           )
         `)
-        .eq('approved', false);
+        .eq('approved', false)
+        .is('rejection_reason', null); // rejected companies leave the queue until they resubmit
 
       if (error) throw error;
 
@@ -57,6 +59,9 @@ export default function ApprovalsScreen() {
   useEffect(() => {
     fetchPendingCompanies();
   }, []);
+
+  // Live: a company that just registered (or was decided on another device) appears / disappears.
+  useRealtimeRefresh([{ table: 'companies' }], () => fetchPendingCompanies());
 
   // Company ids with a decision in flight (ref = instant guard against double taps).
   const busyRef = useRef<Set<string>>(new Set());
@@ -104,14 +109,18 @@ export default function ApprovalsScreen() {
     }
   };
 
-  const reject = async (companyId: string) => {
+  // Reject = keep the company, store the reason, and notify it. It sees the reason on its dashboard.
+  const [rejectDraft, setRejectDraft] = useState<{ id: string; reason: string } | null>(null);
+
+  const reject = async (companyId: string, reason: string) => {
     if (busyRef.current.has(companyId)) return;
     setBusy(companyId, true, 'reject');
     try {
       const { data, error } = await supabase
         .from('companies')
-        .delete()
+        .update({ rejection_reason: reason })
         .eq('id', companyId)
+        .eq('approved', false)
         .select('id');
 
       if (error) {
@@ -124,7 +133,19 @@ export default function ApprovalsScreen() {
       }
 
       setCompanies((prev) => prev.filter((c) => c.id !== companyId));
-      showAlert('Success', 'Company registration has been rejected and deleted.');
+      setRejectDraft(null);
+
+      // companies.id is the company's user id, so this reaches its notification bell.
+      const { error: notifError } = await supabase.from('notifications').insert({
+        user_id: companyId,
+        message: `Your company registration was not approved. Reason: ${reason} You can update your profile and resubmit for review from your dashboard.`,
+        read: false,
+      });
+      if (notifError) {
+        showAlert('Rejected', 'The company was rejected and can see the reason on its dashboard, but the notification could not be sent: ' + notifError.message);
+        return;
+      }
+      showAlert('Rejected', 'The company has been rejected and notified with your reason.');
     } catch (e: any) {
       showAlert('Error', e.message || 'Something went wrong.');
     } finally {
@@ -138,11 +159,17 @@ export default function ApprovalsScreen() {
       { text: 'Approve', onPress: () => approve(company.id) },
     ]);
 
-  const handleReject = (company: PendingCompany) =>
-    showAlert('Reject and delete?', `${company.company_name || 'This company'}'s registration will be permanently deleted. This cannot be undone.`, [
+  const confirmReject = (company: PendingCompany, reason: string) => {
+    const clean = reason.trim();
+    if (clean.length < 3) {
+      showAlert('Reason required', 'Enter a short reason. It is sent to the company so it can fix the issue and resubmit.');
+      return;
+    }
+    showAlert('Reject this company?', `${company.company_name || 'This company'} will be notified with your reason: "${clean}"`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Reject', style: 'destructive', onPress: () => reject(company.id) },
+      { text: 'Reject', style: 'destructive', onPress: () => reject(company.id, clean) },
     ]);
+  };
 
   return (
     <View style={styles.container}>
@@ -203,7 +230,7 @@ export default function ApprovalsScreen() {
               </Button>
               <Button
                 mode="outlined"
-                onPress={() => handleReject(item)}
+                onPress={() => setRejectDraft(rejectDraft?.id === item.id ? null : { id: item.id, reason: '' })}
                 loading={busyKinds[item.id] === 'reject'}
                 disabled={busyIds.includes(item.id)}
                 style={styles.rejectBtn}
@@ -214,6 +241,34 @@ export default function ApprovalsScreen() {
                 Reject
               </Button>
             </View>
+
+            {rejectDraft?.id === item.id ? (
+              <View style={styles.rejectForm}>
+                <TextInput
+                  mode="outlined"
+                  label="Reason for rejection (required)"
+                  value={rejectDraft.reason}
+                  onChangeText={(t) => setRejectDraft((d) => (d ? { ...d, reason: t } : d))}
+                  multiline
+                  maxLength={500}
+                  style={styles.rejectInput}
+                  outlineColor={C.line}
+                  activeOutlineColor={C.accent}
+                />
+                <Button
+                  mode="contained"
+                  onPress={() => confirmReject(item, rejectDraft.reason)}
+                  loading={busyKinds[item.id] === 'reject'}
+                  disabled={busyIds.includes(item.id)}
+                  buttonColor={C.danger}
+                  textColor="#FFFFFF"
+                  style={styles.actionBtn}
+                  contentStyle={styles.btnContent}
+                >
+                  Confirm rejection
+                </Button>
+              </View>
+            ) : null}
           </View>
         )}
         ListEmptyComponent={
@@ -300,6 +355,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   btnContent: { minHeight: 44 },
+  rejectForm: { gap: 10, marginTop: 4 },
+  rejectInput: { backgroundColor: C.card, fontSize: 15 },
   rejectBtn: {
     flex: 1,
     minWidth: 140,

@@ -3,6 +3,7 @@ import React, { useCallback, useState } from 'react';
 import { StyleSheet, View, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { Text, ProgressBar, Button } from 'react-native-paper';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { MotiView } from 'moti';
 import { supabase } from '@/lib/supabase';
 import { useLoadState } from '@/hooks/useLoadState';
@@ -158,6 +159,18 @@ export default function StudentDashboard() {
     useCallback(() => {
       loadAll(false);
     }, [loadAll])
+  );
+
+  // Live: new notifications, status changes, interviews and new drives update the dashboard by themselves.
+  useRealtimeRefresh(
+    [
+      { table: 'notifications', filter: `user_id=eq.${user?.id}` },
+      { table: 'applications', filter: `student_id=eq.${user?.id}` },
+      { table: 'interviews' },
+      { table: 'job_postings' },
+    ],
+    () => loadAll(false),
+    { enabled: !!user }
   );
 
   return (

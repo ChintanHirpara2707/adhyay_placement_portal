@@ -8,19 +8,23 @@ import { UserRole, useAuthStore } from '@/store/authStore';
 export const dashboardFor = (role: UserRole) =>
   role === 'student' ? '/(student)/dashboard' : role === 'company' ? '/(company)/dashboard' : '/(admin)/dashboard';
 
-/** True when the student/company row is flagged `debarred`. A failed lookup (e.g. column not migrated yet) does not lock anyone out. */
-async function isDebarred(userId: string, role: UserRole) {
-  if (role === 'admin') return false;
-  const { data, error } = await supabase
-    .from(role === 'student' ? 'students' : 'companies')
-    .select('debarred')
-    .eq('id', userId)
-    .maybeSingle();
+/**
+ * Debar status of a student/company. A failed lookup (e.g. column not migrated yet) does not lock anyone out.
+ * The reason is fetched separately so a missing `debar_reason` column can never hide the debarment itself.
+ */
+async function getDebarStatus(userId: string, role: UserRole): Promise<{ debarred: boolean; reason: string | null }> {
+  if (role === 'admin') return { debarred: false, reason: null };
+  const table = role === 'student' ? 'students' : 'companies';
+  const { data, error } = await supabase.from(table).select('debarred').eq('id', userId).maybeSingle();
   if (error) {
     console.warn('[auth] debarred check failed:', error.message);
-    return false;
+    return { debarred: false, reason: null };
   }
-  return (data as any)?.debarred === true;
+  if ((data as any)?.debarred !== true) return { debarred: false, reason: null };
+
+  const { data: r } = await supabase.from(table).select('debar_reason').eq('id', userId).maybeSingle();
+  const reason = String((r as any)?.debar_reason ?? '').trim();
+  return { debarred: true, reason: reason || null };
 }
 
 /**
@@ -41,9 +45,13 @@ async function syncRole(session: Session) {
     store.setLoading(false);
     return;
   }
-  if (data?.role && (await isDebarred(session.user.id, data.role as UserRole))) {
+  const debar = data?.role ? await getDebarStatus(session.user.id, data.role as UserRole) : null;
+  if (debar?.debarred) {
     if (useAuthStore.getState().session?.user.id !== session.user.id) return;
-    showAlert('Account debarred', 'Your account has been debarred by the placement cell. Please contact them for help.');
+    showAlert(
+      'Account debarred',
+      `Your account has been debarred by the placement cell.${debar.reason ? `\n\nReason: ${debar.reason}` : ''}\n\nPlease contact the placement cell for help.`
+    );
     await store.logout();
     store.setLoading(false);
     return;

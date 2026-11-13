@@ -1,14 +1,15 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useRef } from 'react';
+import { usePaginatedList } from '@/hooks/usePaginatedList';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { PagedFooter } from '@/components/ui/PagedFooter';
 import { StyleSheet, View, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { NO_ROWS_MESSAGE, showAlert } from '@/lib/alert';
 import { Button } from '@/components/ui/AppButton';
-import { useLoadState } from '@/hooks/useLoadState';
 import { useScreenReady } from '@/hooks/useScreenReady';
 import { SkeletonList } from '@/components/loading/Skeleton';
 import { LoadError } from '@/components/loading/LoadError';
 import { Text, TextInput } from 'react-native-paper';
-import { useFocusEffect } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { C } from '@/theme/design';
@@ -50,10 +51,34 @@ interface Application {
 
 export default function ApplicationsScreen() {
   const { user } = useAuthStore();
-  const { loading, refreshing, error: loadError, begin, succeed, fail, end } = useLoadState('applications');
-  useScreenReady(!loading);
-  const [applications, setApplications] = useState<Application[]>([]);
   const [filter, setFilter] = useState<'all' | 'active' | 'selected' | 'rejected' | 'round_cleared'>('all');
+
+  // Newest first, 20 per page; the status tabs filter in the database so every page is correct.
+  const { rows: applications, setRows: setApplications, loading, refreshing, loadingMore, error: loadError, moreError, hasMore, total, loadMore, retryMore, refresh, reload } =
+    usePaginatedList<Application>(
+      async (from, to) => {
+        let q = supabase
+          .from('applications')
+          .select(
+            `id, status, applied_at, offer_response, offer_reason,
+             job_postings ( title, ctc, deadline, companies ( company_name ) )`,
+            { count: 'exact' }
+          )
+          .eq('student_id', user!.id);
+        if (filter === 'active') q = q.in('status', ['applied', 'shortlisted', 'interview_scheduled', 'round_cleared']);
+        else if (filter !== 'all') q = q.eq('status', filter);
+        const { data, error, count } = await q.order('applied_at', { ascending: false }).order('id', { ascending: false }).range(from, to);
+        if (error) throw error;
+        return { rows: (data as any[]) ?? [], total: count ?? null };
+      },
+      [user?.id, filter],
+      { reloadOnFocus: true }
+    );
+  useScreenReady(!loading);
+
+  // Live: a company shortlisting, scheduling, rejecting or selecting you updates the list (an open timeline refetches when reopened).
+  useRealtimeRefresh([{ table: 'applications', filter: `student_id=eq.${user?.id}` }], reload, { enabled: !!user });
+
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [history, setHistory] = useState<Record<string, HistoryRow[] | 'error'>>({});
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
@@ -93,7 +118,7 @@ export default function ApplicationsScreen() {
       }
       if (!data || data.length === 0) {
         showAlert('Could not withdraw', 'This registration can no longer be withdrawn (the deadline passed or its status changed). ' + NO_ROWS_MESSAGE);
-        fetchStudentApplications(true);
+        reload();
         return;
       }
       setApplications((prev) => prev.filter((x) => x.id !== a.id));
@@ -131,7 +156,7 @@ export default function ApplicationsScreen() {
       }
       if (!data || data.length === 0) {
         showAlert('Already answered', 'This offer has already been answered, or it is no longer open. ' + NO_ROWS_MESSAGE);
-        fetchStudentApplications(true);
+        reload();
         return;
       }
       setApplications((prev) => prev.map((x) => (x.id === a.id ? { ...x, offer_response: choice, offer_reason: cleanReason } : x)));
@@ -161,57 +186,7 @@ export default function ApplicationsScreen() {
       { text: 'Withdraw', style: 'destructive', onPress: () => withdraw(a) },
     ]);
 
-  const fetchStudentApplications = async (isRefresh = false) => {
-    if (!user) return;
-    begin(isRefresh);
-
-    try {
-      const { data, error } = await supabase
-        .from('applications')
-        .select(`
-          id,
-          status,
-          applied_at,
-          offer_response,
-          offer_reason,
-          job_postings (
-            title,
-            ctc,
-            deadline,
-            companies (
-              company_name
-            )
-          )
-        `)
-        .eq('student_id', user.id)
-        .order('applied_at', { ascending: false });
-
-      if (error) throw error;
-
-      setApplications(data as any[] || []);
-      succeed();
-    } catch (e: any) {
-      fail(e);
-    } finally {
-      end();
-    }
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchStudentApplications();
-    }, [user])
-  );
-
-  const filterByStatus = (list: Application[]) => {
-    if (filter === 'all') return list;
-    if (filter === 'active') return list.filter((a) => ['applied', 'shortlisted', 'interview_scheduled', 'round_cleared'].includes(a.status));
-    return list.filter((a) => a.status === filter);
-  };
-
-  const sortByDate = (list: Application[]) => [...list].sort((a, b) => new Date(b.applied_at).getTime() - new Date(a.applied_at).getTime());
-
-  const visible = sortByDate(filterByStatus(applications));
+  const visible = applications;
 
   const formatAppliedAt = (dateString: string) => {
     if (!dateString) return 'N/A';
@@ -244,7 +219,7 @@ export default function ApplicationsScreen() {
         </View>
       ) : loadError ? (
         <View style={styles.listContainer}>
-          <LoadError message={loadError} onRetry={() => fetchStudentApplications()} />
+          <LoadError message={loadError} onRetry={refresh} />
         </View>
       ) : (
         <FlatList
@@ -254,10 +229,15 @@ export default function ApplicationsScreen() {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => fetchStudentApplications(true)}
+              onRefresh={refresh}
               tintColor={C.accent}
               colors={[C.accent]}
             />
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            <PagedFooter loadingMore={loadingMore} moreError={moreError} hasMore={hasMore} onRetry={retryMore} shown={applications.length} total={total} />
           }
           renderItem={({ item }) => {
             const open = expandedId === item.id;

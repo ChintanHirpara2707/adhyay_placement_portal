@@ -104,6 +104,11 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
     else nav.push("/(admin)/profile" as any);
   };
 
+  const goHelp = () => {
+    setMenuVisible(false);
+    nav.push("/help" as any);
+  };
+
   const goSettings = () => {
     setMenuVisible(false);
     goProfile();
@@ -218,6 +223,11 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
             leadingIcon="account-outline"
             onPress={goProfile}
             title="Profile"
+          />
+          <Menu.Item
+            leadingIcon="help-circle-outline"
+            onPress={goHelp}
+            title="Help & support"
           />
           {/* <Menu.Item leadingIcon="cog-outline" onPress={goSettings} title="Settings" /> */}
           <Menu.Item

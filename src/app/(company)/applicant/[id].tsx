@@ -11,7 +11,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -80,6 +79,9 @@ export default function ApplicantDetailScreen() {
   const [app, setApp] = useState<any>(null);
   const [roundInterviews, setRoundInterviews] = useState<any[]>([]);
   const [marking, setMarking] = useState(false);
+  const [changeNote, setChangeNote] = useState(""); // optional reason sent with a reschedule / cancellation
+  const [cancelling, setCancelling] = useState(false);
+  const cancellingRef = useRef(false);
   // Ref guards: state updates are async, so a fast double tap could otherwise fire twice.
   const schedulingRef = useRef(false);
   const markingRef = useRef(false);
@@ -133,7 +135,7 @@ export default function ApplicantDetailScreen() {
       }
       const { data: ivs, error: ivError } = await supabase
         .from("interviews")
-        .select("id, round_number, date_time, mode, result")
+        .select("id, round_number, date_time, mode, notes, result, status, reschedule_note")
         .eq("application_id", (data as any).id)
         .order("round_number", { ascending: true });
       if (ivError) {
@@ -216,6 +218,9 @@ export default function ApplicantDetailScreen() {
         showAlert("Round already completed", `Round ${roundNo} already has a result (${existing.result}).`);
         return;
       }
+      // A cancelled round being scheduled again reuses its row, but counts as a fresh schedule for the wording.
+      const isReschedule = !!existing && existing.status !== "cancelled";
+      const reasonText = changeNote.trim();
       const payload = {
         application_id: app.id,
         round_number: roundNo,
@@ -223,6 +228,8 @@ export default function ApplicantDetailScreen() {
         mode,
         notes: (form.notes ?? "").trim() || null,
         result: "pending",
+        status: "scheduled",
+        reschedule_note: isReschedule ? reasonText || null : null,
       };
       // Rescheduling an existing pending round updates it instead of creating a duplicate row.
       const { data: saved, error: ivError } = existing
@@ -261,7 +268,7 @@ export default function ApplicantDetailScreen() {
         .from("notifications")
         .insert({
           user_id: app.student_id,
-          message: `Interview ${existing ? "rescheduled" : "scheduled"} (Round ${roundNo}) for "${app.job_postings?.title ?? "the role"}" on ${dt.toLocaleString()}. Mode: ${mode}.${noteText ? ` Notes: ${noteText}` : ""}`,
+          message: `Interview ${isReschedule ? "rescheduled" : "scheduled"} (Round ${roundNo}) for "${app.job_postings?.title ?? "the role"}" on ${dt.toLocaleString()}. Mode: ${mode}.${noteText ? ` Notes: ${noteText}` : ""}${isReschedule && reasonText ? ` Reason: ${reasonText}` : ""}`,
           read: false,
         });
       if (notifError) {
@@ -274,7 +281,8 @@ export default function ApplicantDetailScreen() {
         return;
       }
 
-      showAlert("Scheduled", "Interview scheduled and student notified.", [
+      setChangeNote("");
+      showAlert(isReschedule ? "Rescheduled" : "Scheduled", `Interview ${isReschedule ? "rescheduled" : "scheduled"} and student notified.`, [
         { text: "OK", onPress: () => router.back() },
       ]);
     } catch (e: any) {
@@ -296,8 +304,12 @@ export default function ApplicantDetailScreen() {
   const jobTitle = app?.job_postings?.title ?? "the role";
   const currentInterview =
     roundInterviews.find((iv) => iv.round_number === currentRound) ?? null;
+  // A cancelled interview can be neither marked nor edited; only scheduled again.
+  const activeInterview = currentInterview && currentInterview.status !== "cancelled" ? currentInterview : null;
+  const canChangeInterview =
+    !!activeInterview && activeInterview.result === "pending" && app?.status !== "selected" && app?.status !== "rejected";
   const showMarkSection =
-    !!currentInterview &&
+    !!activeInterview &&
     parseDbDate(currentInterview.date_time).getTime() < Date.now() &&
     currentInterview.result === "pending" &&
     app?.status !== "selected" &&
@@ -307,6 +319,74 @@ export default function ApplicantDetailScreen() {
   const refreshRoundState = async () => {
     await fetchStudentDetail();
   };
+
+  // Pre-fills the schedule form with the current interview so the company only edits what changes.
+  const startReschedule = () => {
+    if (!activeInterview) return;
+    const d = parseDbDate(activeInterview.date_time);
+    if (!Number.isNaN(d.getTime())) {
+      const p = (n: number) => String(n).padStart(2, "0");
+      const day = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+      const time = `${p(d.getHours())}:${p(d.getMinutes())}`;
+      setSelectedDateStr(day);
+      setSelectedTimeSlot(time);
+      setValue("date_time", `${day}T${time}`, { shouldValidate: true });
+    }
+    setMode(activeInterview.mode === "offline" ? "offline" : "online");
+    setValue("notes", activeInterview.notes ?? "");
+    showAlert("Reschedule", "The form below is pre-filled. Pick the new date and time, then tap \"Schedule & Notify Student\".");
+  };
+
+  const cancelInterview = async () => {
+    if (!app || !activeInterview || cancellingRef.current) return;
+    cancellingRef.current = true;
+    setCancelling(true);
+    try {
+      const reasonText = changeNote.trim();
+      const { data: ivRows, error: ivError } = await supabase
+        .from("interviews")
+        .update({ status: "cancelled", reschedule_note: reasonText || null })
+        .eq("id", activeInterview.id)
+        .select("id");
+      if (ivError || !ivRows || ivRows.length === 0) {
+        showAlert("Cancel failed", "Could not cancel the interview: " + (ivError?.message ?? NO_ROWS_MESSAGE));
+        return;
+      }
+      // Back to the status the student had before this interview was booked.
+      const { data: appRows, error: appError } = await supabase
+        .from("applications")
+        .update({ status: currentRound > 1 ? "round_cleared" : "shortlisted" })
+        .eq("id", app.id)
+        .select("id");
+      if (appError || !appRows || appRows.length === 0) {
+        showAlert("Status Update Failed", "Interview cancelled, but the application status could not be updated: " + (appError?.message ?? NO_ROWS_MESSAGE));
+        return;
+      }
+      const { error: notifError } = await supabase.from("notifications").insert({
+        user_id: app.student_id,
+        message: `Interview cancelled (Round ${currentRound}) for "${jobTitle}" that was scheduled on ${parseDbDate(activeInterview.date_time).toLocaleString()}.${reasonText ? ` Reason: ${reasonText}` : ""} A new time will be shared if the process continues.`,
+        read: false,
+      });
+      if (notifError) {
+        showAlert("Notification Failed", "Interview cancelled, but the student notification could not be sent: " + notifError.message);
+        return;
+      }
+      setChangeNote("");
+      showAlert("Cancelled", "Interview cancelled and the student has been notified.");
+      await refreshRoundState();
+    } catch (e: any) {
+      showAlert("Error", e?.message || "Failed to cancel the interview.");
+    } finally {
+      cancellingRef.current = false;
+      setCancelling(false);
+    }
+  };
+
+  const confirmCancelInterview = () =>
+    showAlert("Cancel this interview?", "The student will be notified and the interview removed from their upcoming list. You can schedule a new time afterwards.", [
+      { text: "Keep it", style: "cancel" },
+      { text: "Cancel interview", style: "destructive", onPress: cancelInterview },
+    ]);
 
   const handleMarkRejected = async () => {
     if (!app || !currentInterview || markingRef.current) return;
@@ -624,6 +704,65 @@ export default function ApplicantDetailScreen() {
                       Rejected
                     </Button>
                   </View>
+                </Card.Content>
+              </Card>
+            ) : null}
+
+            {/* Booked interview for the current round: reschedule or cancel */}
+            {currentInterview ? (
+              <Card style={styles.card} elevation={0}>
+                <Card.Content style={styles.cardContent}>
+                  <Text style={styles.sectionTitle}>
+                    {currentInterview.status === "cancelled" ? "Interview cancelled" : "Current interview"}
+                  </Text>
+                  <Text style={styles.sectionSubtitle}>
+                    {roundName(currentRound)} · Round {currentRound} of {totalRounds} ·{" "}
+                    {parseDbDate(currentInterview.date_time).toLocaleString()} · {currentInterview.mode}
+                  </Text>
+                  {currentInterview.status === "cancelled" ? (
+                    <Text style={styles.sectionSubtitle}>
+                      This interview was cancelled. Use "Schedule Interview" below to book a new time.
+                    </Text>
+                  ) : null}
+                  {canChangeInterview ? (
+                    <>
+                      <TextInput
+                        mode="outlined"
+                        placeholder="Reason for the change (optional, sent to the student)"
+                        value={changeNote}
+                        onChangeText={setChangeNote}
+                        maxLength={500}
+                        style={styles.input}
+                        outlineColor={C.line}
+                        activeOutlineColor={C.accent}
+                      />
+                      <View style={styles.markRow}>
+                        <Button
+                          mode="outlined"
+                          icon="calendar-edit"
+                          onPress={startReschedule}
+                          disabled={cancelling}
+                          textColor={C.accent}
+                          style={styles.markBtn}
+                          contentStyle={styles.markBtnContent}
+                        >
+                          Reschedule
+                        </Button>
+                        <Button
+                          mode="outlined"
+                          icon="calendar-remove"
+                          onPress={confirmCancelInterview}
+                          loading={cancelling}
+                          disabled={cancelling}
+                          textColor={C.danger}
+                          style={styles.markBtn}
+                          contentStyle={styles.markBtnContent}
+                        >
+                          Cancel
+                        </Button>
+                      </View>
+                    </>
+                  ) : null}
                 </Card.Content>
               </Card>
             ) : null}

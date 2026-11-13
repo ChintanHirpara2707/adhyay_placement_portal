@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/AppButton";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { z } from "zod";
 import { BrandLogo } from "@/components/BrandLogo";
+import { ConsentCheckbox } from "@/components/ui/ConsentCheckbox";
 import { GoogleButton, OrDivider } from "@/components/ui/GoogleButton";
 import { useGoogleSignIn } from "@/lib/googleAuth";
 import { C, R, shadow } from "@/theme/design";
@@ -53,6 +54,9 @@ const signupSchema = z.object({
     .string()
     .min(6, { message: "Password must be at least 6 characters" }),
   role: z.enum(["student", "company"]),
+  accepted: z.boolean().refine((v) => v === true, {
+    message: "Please accept the Terms of Use and Privacy Policy to continue",
+  }),
 });
 
 type SignupFormData = z.infer<typeof signupSchema>;
@@ -115,6 +119,7 @@ export default function SignupScreen() {
       email: "",
       password: "",
       role: "student",
+      accepted: false,
     },
   });
 
@@ -135,6 +140,8 @@ export default function SignupScreen() {
         options: {
           data: {
             role: data.role,
+            // The users row is created by a DB trigger; another trigger turns this flag into users.consent_at (server time).
+            terms_accepted: true,
           },
         },
       });
@@ -400,6 +407,15 @@ export default function SignupScreen() {
                       </HelperText>
                     )}
                   </View>
+                )}
+              />
+
+              {/* Consent */}
+              <Controller
+                control={control}
+                name="accepted"
+                render={({ field: { onChange, value } }) => (
+                  <ConsentCheckbox checked={value} onChange={onChange} error={errors.accepted?.message} />
                 )}
               />
 

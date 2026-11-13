@@ -1,4 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/AppButton';
+import { AdminDetailView } from '@/components/admin/AdminDetailView';
+import { removeUser, setDebarred } from '@/lib/adminManage';
 import { StyleSheet, View, ScrollView, RefreshControl } from 'react-native';
 import { showAlert } from '@/lib/alert';
 import { useLoadState } from '@/hooks/useLoadState';
@@ -20,8 +23,11 @@ interface Student {
   backlog_count: number;
   phone: string;
   skills: string[] | null;
+  resume_url: string | null;
+  debarred: boolean | null;
   users: {
     email: string;
+    created_at?: string | null;
   } | null;
 }
 
@@ -45,8 +51,11 @@ export default function StudentsScreen() {
           backlog_count,
           phone,
           skills,
+          resume_url,
+          debarred,
           users (
-            email
+            email,
+            created_at
           )
         `);
 
@@ -78,6 +87,105 @@ export default function StudentsScreen() {
 
   // Client-side search logic
   const filteredStudents = searchFilter(students);
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [busy, setBusy] = useState<'debar' | 'remove' | null>(null);
+  const busyRef = useRef(false);
+  const selected = students.find((s) => s.id === selectedId) ?? null;
+
+  const runAction = async (kind: 'debar' | 'remove', fn: () => Promise<void>, done: () => void) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(kind);
+    try {
+      await fn();
+      done();
+    } catch (e: any) {
+      showAlert('Action failed', e?.message || 'Something went wrong.');
+    } finally {
+      busyRef.current = false;
+      setBusy(null);
+    }
+  };
+
+  const toggleDebar = (s: Student) => {
+    const next = !s.debarred;
+    showAlert(
+      next ? 'Debar student?' : 'Undebar student?',
+      next
+        ? `${s.full_name || 'This student'} will be signed out and blocked from logging in and applying.`
+        : `${s.full_name || 'This student'} will be able to log in and apply again.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: next ? 'Debar' : 'Undebar',
+          style: next ? 'destructive' : 'default',
+          onPress: () =>
+            runAction(
+              'debar',
+              () => setDebarred('students', s.id, next),
+              () => setStudents((prev) => prev.map((x) => (x.id === s.id ? { ...x, debarred: next } : x)))
+            ),
+        },
+      ]
+    );
+  };
+
+  const removeStudent = (s: Student) =>
+    showAlert(
+      'Remove student?',
+      `${s.full_name || 'This student'} and all their applications, interviews and notifications will be permanently deleted, and their login removed. This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () =>
+            runAction(
+              'remove',
+              () => removeUser(s.id),
+              () => {
+                setStudents((prev) => prev.filter((x) => x.id !== s.id));
+                setSelectedId(null);
+                showAlert('Removed', 'The student has been removed.');
+              }
+            ),
+        },
+      ]
+    );
+
+  if (selected) {
+    const placed = placedIds.has(selected.id);
+    return (
+      <View style={styles.container}>
+        <TopNavbar title="Students" subtitle="Student details" />
+        <AdminDetailView
+          title={selected.full_name || 'Incomplete Profile'}
+          subtitle={selected.users?.email || 'No email'}
+          chips={[
+            { label: placed ? 'Placed' : 'Unplaced', tone: placed ? 'success' : 'muted' },
+            ...(selected.debarred ? [{ label: 'Debarred', tone: 'danger' as const }] : []),
+          ]}
+          fields={[
+            { label: 'Student ID', value: selected.id },
+            { label: 'Email', value: selected.users?.email },
+            { label: 'Phone', value: selected.phone },
+            { label: 'Branch', value: selected.branch },
+            { label: 'CGPA', value: selected.cgpa != null ? String(selected.cgpa) : null },
+            { label: 'Backlogs', value: selected.backlog_count != null ? String(selected.backlog_count) : null },
+            { label: 'Skills', value: Array.isArray(selected.skills) ? selected.skills.join(', ') : null },
+            { label: 'Resume', value: selected.resume_url, link: true },
+            { label: 'Registered', value: selected.users?.created_at ? new Date(selected.users.created_at).toLocaleString() : null },
+          ]}
+          debarred={!!selected.debarred}
+          busy={busy}
+          onBack={() => setSelectedId(null)}
+          onToggleDebar={() => toggleDebar(selected)}
+          onRemove={() => removeStudent(selected)}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -136,8 +244,21 @@ export default function StudentsScreen() {
               key: 'status',
               title: 'Status',
               flex: 1,
+              render: (item) =>
+                item.debarred ? (
+                  <StatusChip label="Debarred" tone="danger" />
+                ) : (
+                  <StatusChip label={placedIds.has(item.id) ? 'Placed' : 'Unplaced'} tone={placedIds.has(item.id) ? 'success' : 'muted'} />
+                ),
+            },
+            {
+              key: 'details',
+              title: '',
+              flex: 1,
               render: (item) => (
-                <StatusChip label={placedIds.has(item.id) ? 'Placed' : 'Unplaced'} tone={placedIds.has(item.id) ? 'success' : 'muted'} />
+                <Button mode="text" compact textColor={C.accent} onPress={() => setSelectedId(item.id)}>
+                  Details
+                </Button>
               ),
             },
           ]}

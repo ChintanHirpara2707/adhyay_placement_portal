@@ -220,7 +220,7 @@ export default function ApplicantDetailScreen() {
         round_number: roundNo,
         date_time: dt.toISOString(),
         mode,
-        notes: form.notes || null,
+        notes: (form.notes ?? "").trim() || null,
         result: "pending",
       };
       // Rescheduling an existing pending round updates it instead of creating a duplicate row.
@@ -255,11 +255,12 @@ export default function ApplicantDetailScreen() {
         return;
       }
 
+      const noteText = (form.notes ?? "").trim();
       const { error: notifError } = await supabase
         .from("notifications")
         .insert({
           user_id: app.student_id,
-          message: `Interview ${existing ? "rescheduled" : "scheduled"} (Round ${roundNo}) for "${app.job_postings?.title ?? "the role"}" on ${dt.toLocaleString()}. Mode: ${mode}.`,
+          message: `Interview ${existing ? "rescheduled" : "scheduled"} (Round ${roundNo}) for "${app.job_postings?.title ?? "the role"}" on ${dt.toLocaleString()}. Mode: ${mode}.${noteText ? ` Notes: ${noteText}` : ""}`,
           read: false,
         });
       if (notifError) {

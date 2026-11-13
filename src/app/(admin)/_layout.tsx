@@ -71,6 +71,13 @@ export default function AdminLayout() {
         }}
       />
       <Tabs.Screen
+        name="companies"
+        options={{
+          href: null,
+          title: 'Companies',
+        }}
+      />
+      <Tabs.Screen
         name="broadcast"
         options={{
           href: null,

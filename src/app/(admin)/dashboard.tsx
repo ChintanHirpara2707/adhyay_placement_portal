@@ -75,16 +75,16 @@ export default function AdminDashboardScreen() {
   const fetchPendingApprovalsCount = useCallback(async () => {
     const { data, error: qErr6 } = await supabase
       .from('companies')
-      .select('id, company_name, created_at')
+      // `companies` has no created_at column: select only what exists and use "now" for the feed timestamp.
+      .select('id, company_name')
       .eq('approved', false)
-      .order('created_at', { ascending: false })
       .limit(5);
     if (qErr6) throw qErr6;
     setRecent(
       ((data as any[]) ?? []).map((c) => ({
         id: c.id,
         message: `${c.company_name ?? 'A company'} requested approval`,
-        created_at: c.created_at ?? new Date().toISOString(),
+        created_at: new Date().toISOString(),
       }))
     );
   }, []);
@@ -161,6 +161,16 @@ export default function AdminDashboardScreen() {
               onPress={() => nav.push('/(admin)/broadcast' as any)}
             >
               Send broadcast
+            </Button>
+            <Button
+              mode="outlined"
+              icon="domain"
+              textColor={C.accent}
+              style={[styles.actionBtn, styles.actionOutline]}
+              contentStyle={styles.actionContent}
+              onPress={() => nav.push('/(admin)/companies' as any)}
+            >
+              Companies
             </Button>
           </View>
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, View, FlatList, RefreshControl } from 'react-native';
+import { StyleSheet, View, FlatList, RefreshControl, Linking } from 'react-native';
 import { Text, SegmentedButtons, Button } from 'react-native-paper';
 import { useFocusEffect } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -114,10 +114,24 @@ export default function StudentInterviewsScreen() {
                   <Text style={styles.date}>{formatDateTime(item.date_time)}</Text>
                 </View>
                 {result ? <StatusChip label={result.label} tone={result.tone} /> : null}
-                {item.notes ? (
-                  <Text style={styles.notes} numberOfLines={3}>
-                    {item.notes}
-                  </Text>
+                {item.notes?.trim() ? (
+                  <View style={styles.notesBox}>
+                    <Text style={styles.notesLabel}>Meeting instructions & notes</Text>
+                    <Text style={styles.notes} selectable>
+                      {item.notes
+                        .trim()
+                        .split(/(https?:\/\/[^\s]+)/g)
+                        .map((part, i) =>
+                          /^https?:\/\//.test(part) ? (
+                            <Text key={i} style={styles.link} onPress={() => Linking.openURL(part)}>
+                              {part}
+                            </Text>
+                          ) : (
+                            part
+                          )
+                        )}
+                    </Text>
+                  </View>
                 ) : null}
               </View>
             );
@@ -152,6 +166,9 @@ const styles = StyleSheet.create({
   round: { fontSize: 13, fontWeight: '600', color: C.teal },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   date: { fontSize: 14, color: C.accentStrong, fontWeight: '600' },
-  notes: { fontSize: 13, color: C.muted, marginTop: 4, lineHeight: 20 },
+  notesBox: { marginTop: 4, gap: 2, backgroundColor: C.surface, borderRadius: 10, borderWidth: 1, borderColor: C.line, padding: 10 },
+  notesLabel: { fontSize: 11, fontWeight: '600', color: C.muted, letterSpacing: 0.4 },
+  notes: { fontSize: 13, color: C.ink, lineHeight: 20 },
+  link: { color: C.accent, textDecorationLine: 'underline' },
   retry: { borderColor: C.line, marginTop: 8 },
 });

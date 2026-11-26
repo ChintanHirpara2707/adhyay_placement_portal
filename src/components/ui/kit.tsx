@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { Text } from 'react-native-paper';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { C, R, shadow } from '@/theme/design';
+import { C, R, shadow, TOUCH } from '@/theme/design';
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
@@ -130,6 +130,8 @@ export const StatusChip: React.FC<{ label: string; tone?: Tone }> = ({ label, to
 
 export const statusToneFor = (status: string): 'success' | 'warning' | 'danger' | 'accent' | 'teal' | 'muted' => {
   const s = status.toLowerCase();
+  if (s === 'withdrawn') return 'muted';
+  if (s === 'debarred') return 'danger';
   if (['approved', 'selected', 'offered', 'placed'].includes(s)) return 'success';
   if (['pending', 'applied', 'in review', 'in_review'].includes(s)) return 'warning';
   if (['rejected', 'failed', 'closed'].includes(s)) return 'danger';
@@ -191,7 +193,7 @@ const styles = StyleSheet.create({
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   chipRow: { paddingHorizontal: 16, paddingVertical: 8, gap: 8, alignItems: 'center' },
   filterChip: {
-    minHeight: 40,
+    minHeight: TOUCH,
     paddingHorizontal: 14,
     borderRadius: R.pill,
     borderWidth: 1,

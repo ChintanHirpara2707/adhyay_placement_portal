@@ -13,7 +13,6 @@ import Animated, {
 import { scheduleOnRN } from 'react-native-worklets';
 import * as SplashScreen from 'expo-splash-screen';
 import { BrandLogo } from '@/components/BrandLogo';
-import { Theme } from '@/theme/theme';
 import { C } from '@/theme/design';
 
 /* ------------------------------------------------------------------ */
@@ -171,7 +170,7 @@ export const AppIntro: React.FC<{
 
 const styles = StyleSheet.create({
   // Above everything, including dialogs and the auth overlay.
-  root: { ...(StyleSheet.absoluteFill as object), zIndex: 2000, backgroundColor: Theme.colors.background },
+  root: { ...(StyleSheet.absoluteFill as object), zIndex: 2000, backgroundColor: C.paper },
   press: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 },
   logoClip: { overflow: 'hidden' },
   // A soft white highlight: it only shows over the logo's coloured pixels, so it reads as a shimmer on the logo.

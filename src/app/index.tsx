@@ -23,10 +23,11 @@ import { C, R, shadow } from "@/theme/design";
 /* ------------------------------------------------------------------ */
 /* Content                                                             */
 /* ------------------------------------------------------------------ */
+// Facts about the product only. No placement or partner numbers here unless they come live from the database.
 const STATS = [
-  { value: "95%+", label: "Placement Rate" },
-  { value: "500+", label: "Verified Partners" },
+  { value: "3", label: "Roles, One Login" },
   { value: "Live", label: "Drive Tracking" },
+  { value: "24h · 2h", label: "Deadline Reminders" },
 ];
 
 const FEATURES = [

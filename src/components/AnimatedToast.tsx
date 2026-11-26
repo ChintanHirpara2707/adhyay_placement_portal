@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { MotiView, AnimatePresence } from 'moti';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { Theme } from '@/theme/theme';
+import { C, R } from '@/theme/design';
 
 export type ToastType = 'success' | 'error' | 'info';
 
@@ -33,19 +33,19 @@ export const AnimatedToast: React.FC<AnimatedToastProps> = ({
   const colors = {
     success: {
       bg: '#ECFDF5',
-      border: Theme.colors.success,
+      border: C.success,
       text: '#065F46',
       icon: 'check-circle' as const,
     },
     error: {
       bg: '#FEF2F2',
-      border: Theme.colors.error,
+      border: C.danger,
       text: '#991B1B',
       icon: 'alert-circle' as const,
     },
     info: {
       bg: '#EFF6FF',
-      border: Theme.colors.primaryAccent,
+      border: C.accent,
       text: '#1E3A8A',
       icon: 'information' as const,
     },
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: Theme.borderRadius.md,
+    borderRadius: R.button,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },

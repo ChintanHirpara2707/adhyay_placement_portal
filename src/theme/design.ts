@@ -1,9 +1,10 @@
 import { Platform } from 'react-native';
+import { MD3LightTheme } from 'react-native-paper';
 
 /**
  * Single source of truth for the visual language.
  * White canvas, soft-gray secondary surfaces, charcoal text, restrained blue accent.
- * Every screen and component must import from here (or from `@/theme/theme`, which derives from it).
+ * Every screen and component must import from here.
  */
 export const C = {
   // Text
@@ -89,4 +90,33 @@ export const T = {
   body: { fontSize: 15, lineHeight: 22 },
   small: { fontSize: 13, lineHeight: 18 },
   inputText: { fontSize: 16 },
+};
+
+/** React Native Paper theme built from the tokens above (used by the root PaperProvider). */
+export const paperTheme = {
+  ...MD3LightTheme,
+  colors: {
+    ...MD3LightTheme.colors,
+    primary: C.accent,
+    primaryContainer: C.accentSoft,
+    onPrimaryContainer: C.accentStrong,
+    secondaryContainer: C.accentSoft,
+    onSecondaryContainer: C.accentStrong,
+    onPrimary: C.paper,
+    background: C.paper,
+    surface: C.card,
+    onSurface: C.ink,
+    surfaceVariant: C.surface,
+    onSurfaceVariant: C.muted,
+    outline: C.line,
+    error: C.danger,
+    elevation: {
+      level0: 'transparent',
+      level1: C.paper,
+      level2: C.paper,
+      level3: C.paper,
+      level4: C.paper,
+      level5: C.paper,
+    },
+  },
 };

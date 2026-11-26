@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View, Image } from 'react-native';
+import { Image, Platform, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import Animated, {
   useSharedValue,
@@ -10,27 +10,37 @@ import Animated, {
   cancelAnimation,
 } from 'react-native-reanimated';
 import { supabase } from '@/lib/supabase';
-import { Theme } from '@/theme/theme';
+import { C, R } from '@/theme/design';
 import { SHOWCASE_COMPANIES } from '@/constants/showcaseCompanies';
 
 type MarqueeItem =
   | { kind: 'text'; name: string }
   | { kind: 'logo'; name: string; logo: number };
 
+/** Scroll speed: one pixel every 25 ms (40 px/s). A loop never runs faster than 4 s. */
+const MS_PER_PX = 25;
+const MIN_LOOP_MS = 4000;
+/** Space between badges. A per-badge margin (not the row's `gap`) so the doubled row is exactly two periods wide. */
+const BADGE_SPACING = 12;
+
 export const PartnerMarquee: React.FC = () => {
   const [dbNames, setDbNames] = useState<string[]>([]);
-  const [halfWidth, setHalfWidth] = useState(0);
+  // Width of ONE full set of badges, trailing spacing included = the distance after which the row repeats.
+  const [period, setPeriod] = useState(0);
   const offset = useSharedValue(0);
 
   const fetchApprovedCompanies = useCallback(async () => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('companies')
         .select('company_name')
         .eq('approved', true)
         .limit(10);
+      if (error) throw error;
       setDbNames(((data as any[]) ?? []).map((c) => c.company_name).filter(Boolean));
-    } catch {
+    } catch (e) {
+      // Decorative only: fall back to "New companies joining soon", but say why in development.
+      if (__DEV__) console.warn('[PartnerMarquee] could not load approved companies:', e);
       setDbNames([]);
     }
   }, []);
@@ -39,22 +49,37 @@ export const PartnerMarquee: React.FC = () => {
     fetchApprovedCompanies();
   }, [fetchApprovedCompanies]);
 
+  /** Scroll left forever, resuming from `from` at the normal speed (the first pass only covers what is left). */
   const startScroll = useCallback(
-    (from?: number) => {
-      if (halfWidth <= 0) return;
-      offset.value = from ?? 0;
-      offset.value = withRepeat(
-        withTiming(-halfWidth, { duration: Math.max(halfWidth * 25, 4000), easing: Easing.linear }),
-        -1,
-        false
-      );
+    (from = 0) => {
+      if (period <= 0) return;
+      cancelAnimation(offset);
+      const loopMs = Math.max(period * MS_PER_PX, MIN_LOOP_MS);
+      const loop = () => withRepeat(withTiming(-period, { duration: loopMs, easing: Easing.linear }), -1, false);
+      const start = from <= 0 && from > -period ? from : 0;
+      if (start === 0) {
+        offset.value = 0;
+        offset.value = loop();
+        return;
+      }
+      offset.value = start;
+      const remainingMs = (loopMs * (period + start)) / period;
+      offset.value = withTiming(-period, { duration: remainingMs, easing: Easing.linear }, (finished) => {
+        if (!finished) return;
+        offset.value = 0;
+        offset.value = withRepeat(withTiming(-period, { duration: loopMs, easing: Easing.linear }), -1, false);
+      });
     },
-    [halfWidth, offset]
+    [period, offset]
   );
 
   useEffect(() => {
     startScroll(0);
-  }, [halfWidth, startScroll]);
+    return () => cancelAnimation(offset);
+  }, [startScroll, offset]);
+
+  const pause = useCallback(() => cancelAnimation(offset), [offset]);
+  const resume = useCallback(() => startScroll(offset.value), [startScroll, offset]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: offset.value }],
@@ -70,18 +95,23 @@ export const PartnerMarquee: React.FC = () => {
   }
 
   const doubled = [...items, ...items];
+  // Pause while the pointer is over the strip (web only; these props are not part of the native View types).
+  const hoverProps = Platform.OS === 'web' ? ({ onMouseEnter: pause, onMouseLeave: resume } as any) : {};
 
   return (
     <View
       style={styles.viewport}
-      onTouchStart={() => cancelAnimation(offset)}
-      onTouchEnd={() => startScroll(offset.value)}
+      onTouchStart={pause}
+      onTouchEnd={resume}
+      onTouchCancel={resume}
+      {...hoverProps}
     >
       <Animated.View
         style={[styles.row, animatedStyle]}
         onLayout={(e) => {
-          const half = e.nativeEvent.layout.width / 2;
-          if (half > 0 && Math.abs(half - halfWidth) > 1) setHalfWidth(half);
+          // Two identical sets, each badge followed by BADGE_SPACING, so half the row is exactly one period.
+          const next = e.nativeEvent.layout.width / 2;
+          if (next > 0 && Math.abs(next - period) > 1) setPeriod(next);
         }}
       >
         {doubled.map((item, i) => (
@@ -100,19 +130,21 @@ export const PartnerMarquee: React.FC = () => {
 
 const styles = StyleSheet.create({
   viewport: { overflow: 'hidden', paddingVertical: 4 },
-  row: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  // No `gap` here: spacing lives on each badge (see BADGE_SPACING) so the loop has no seam.
+  row: { flexDirection: 'row', alignItems: 'center' },
   badge: {
     height: 64,
     minWidth: 120,
+    marginRight: BADGE_SPACING,
     paddingHorizontal: 16,
-    borderRadius: Theme.borderRadius.lg,
+    borderRadius: R.card,
     borderWidth: 1,
-    borderColor: Theme.colors.border,
-    backgroundColor: Theme.colors.surface,
+    borderColor: C.line,
+    backgroundColor: C.card,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badgeText: { fontSize: 14, fontWeight: '700', color: Theme.colors.primaryText },
+  badgeText: { fontSize: 14, fontWeight: '700', color: C.ink },
   logo: { height: 60, width: 110 },
-  fallback: { fontSize: 14, color: Theme.colors.secondaryText, textAlign: 'center', paddingVertical: 12 },
+  fallback: { fontSize: 14, color: C.muted, textAlign: 'center', paddingVertical: 12 },
 });

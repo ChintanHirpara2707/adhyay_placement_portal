@@ -2,7 +2,6 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { Theme } from '@/theme/theme';
 import { C } from '@/theme/design';
 import { timeAgo } from '@/lib/format';
 
@@ -19,7 +18,7 @@ export const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   message,
   timestamp,
   unread = false,
-  iconColor = Theme.colors.primaryAccent,
+  iconColor = C.accent,
 }) => {
   return (
     <View style={[styles.row, unread && styles.unreadRow]}>
@@ -43,7 +42,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 4,
     borderBottomWidth: 1,
-    borderBottomColor: Theme.colors.borderLight,
+    borderBottomColor: C.line,
   },
   unreadRow: { backgroundColor: C.surface, borderRadius: 8, paddingHorizontal: 8 },
   iconWrap: {
@@ -54,14 +53,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   body: { flex: 1, gap: 2 },
-  message: { fontSize: 14, color: Theme.colors.primaryText, lineHeight: 20 },
+  message: { fontSize: 14, color: C.ink, lineHeight: 20 },
   unreadMessage: { fontWeight: '600' },
-  time: { fontSize: 12, color: Theme.colors.secondaryText },
+  time: { fontSize: 12, color: C.muted },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: Theme.colors.primaryAccent,
+    backgroundColor: C.accent,
     marginTop: 6,
   },
 });

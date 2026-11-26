@@ -199,6 +199,16 @@ export default function JobDetailsScreen() {
           showAlert('Already Registered', 'You have already registered for this drive.');
           return;
         }
+        // 42501 = row-level security refused the insert. The database enforces the same rules as the
+        // job feed (open drive, before the deadline, CGPA / branch / backlog criteria, complete profile),
+        // e.g. when a student opens a drive link they are not eligible for.
+        if ((error as any).code === '42501') {
+          showAlert(
+            'Not eligible',
+            'You cannot register for this drive. Check that your profile has your CGPA and branch, that you meet the eligibility criteria (CGPA, branch, backlogs) and that the deadline has not passed.'
+          );
+          return;
+        }
         showAlert('Registration Failed', error.message);
         return;
       }
@@ -299,13 +309,18 @@ export default function JobDetailsScreen() {
             {/* 3. ELIGIBILITY CRITERIA */}
             <Section title="ELIGIBILITY CRITERIA">
               {noCriteria ? (
-                <Text style={styles.body}>No Criteria</Text>
+                <Text style={styles.body}>
+                  No eligibility criteria are listed for this drive. Ask the placement cell before registering.
+                </Text>
               ) : (
                 <View style={styles.bulletList}>
                   <Text style={styles.body}>• Minimum CGPA: {job.min_cgpa || 'None'}</Text>
-                  {job.eligible_branches && job.eligible_branches.length > 0 ? (
-                    <Text style={styles.body}>• Eligible Branches: {job.eligible_branches.join(', ')}</Text>
-                  ) : null}
+                  <Text style={styles.body}>
+                    • Eligible Branches:{' '}
+                    {job.eligible_branches && job.eligible_branches.length > 0
+                      ? job.eligible_branches.join(', ')
+                      : 'Not specified (ask the placement cell)'}
+                  </Text>
                   <Text style={styles.body}>• Backlogs: {job.backlog_allowed ? 'Allowed' : 'Not Allowed'}</Text>
                 </View>
               )}
@@ -351,7 +366,7 @@ export default function JobDetailsScreen() {
             <Section title="LOGISTICS & CONDUCT">
               <View style={styles.bulletList}>
                 <Text style={styles.body}>
-                  • Educational Qualification: {job.eligible_branches && job.eligible_branches.length > 0 ? job.eligible_branches.join(', ') : 'All branches'}
+                  • Educational Qualification: {job.eligible_branches && job.eligible_branches.length > 0 ? job.eligible_branches.join(', ') : 'Not specified'}
                 </Text>
                 {profiles.map((p, i) => (
                   <Text key={i} style={styles.body}>• {p} — {ctcLabel} CTC</Text>

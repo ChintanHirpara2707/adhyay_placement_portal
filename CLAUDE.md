@@ -78,7 +78,7 @@ Storage buckets: `resumes` (private, PDF, 5 MB, object `{uid}/resume.pdf`; `stud
 
 SQL files, run in order: base schema → `policies-check-and-fix.sql` → `google-oauth.sql` → `10-admin-manage.sql`
 → `11-student-features-a.sql` → `12-student-features-b.sql` (needs pg_cron) → `16-master.sql`
-→ `17-admin-users-read.sql` → `18-security-fixes.sql`. All idempotent; later files override earlier ones.
+→ `17-admin-users-read.sql` → `18-security-fixes.sql` → `19-followups.sql`. All idempotent; later files override earlier ones.
 
 Helpers (SECURITY DEFINER, `search_path = public`): `get_my_role()`, `is_debarred()`, `admin_remove_user()`,
 `send_deadline_reminders()` (pg_cron every 15 min; eligible students only, not registered or hidden), and from 18: `is_student_eligible(job)`,

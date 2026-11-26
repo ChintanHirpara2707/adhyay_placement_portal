@@ -158,6 +158,7 @@ Open the Supabase **SQL Editor** and run, in this order:
 7. `supabase/16-master.sql` (interview reschedule, company logos, debar history, rejection reason, admin views, support tickets, consent, realtime)
 8. `supabase/17-admin-users-read.sql`
 9. `supabase/18-security-fixes.sql` (stricter RLS for registrations, notifications and job postings). Test it on a copy of the database first; the file ends with verification queries and a test checklist.
+10. `supabase/19-followups.sql` (run after 18: reminders skip debarred students, plus a check for old drives with no eligible branches).
 
 Every file is idempotent. Run `notify pgrst, 'reload schema';` after any schema change.
 

@@ -2,7 +2,6 @@ import { TopNavbar } from "@/components/TopNavbar";
 import { getInitials } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/authStore";
-import { Theme } from "@/theme/theme";
 import { C } from "@/theme/design";
 import { useEffect, useRef, useState } from "react";
 import * as DocumentPicker from "expo-document-picker";
@@ -332,7 +331,7 @@ export default function StudentProfileScreen() {
               </View>
               <ProgressBar
                 progress={completion / 100}
-                color={Theme.colors.primaryAccent}
+                color={C.accent}
                 style={styles.bar}
               />
             </View>
@@ -366,8 +365,8 @@ export default function StudentProfileScreen() {
                         contentStyle={styles.dropdownContent}
                         textColor={
                           value
-                            ? Theme.colors.primaryText
-                            : Theme.colors.secondaryText
+                            ? C.ink
+                            : C.muted
                         }
                         icon="chevron-down"
                       >
@@ -416,7 +415,7 @@ export default function StudentProfileScreen() {
                         error={!!errors.cgpa}
                         style={styles.input}
                         outlineColor={C.line}
-                        activeOutlineColor={Theme.colors.primaryAccent}
+                        activeOutlineColor={C.accent}
                       />
                       {errors.cgpa ? (
                         <HelperText type="error" visible>
@@ -445,7 +444,7 @@ export default function StudentProfileScreen() {
                         error={!!errors.backlog_count}
                         style={styles.input}
                         outlineColor={C.line}
-                        activeOutlineColor={Theme.colors.primaryAccent}
+                        activeOutlineColor={C.accent}
                       />
                       {errors.backlog_count ? (
                         <HelperText type="error" visible>
@@ -485,7 +484,7 @@ export default function StudentProfileScreen() {
                     error={!!errors.full_name}
                     style={styles.input}
                     outlineColor={C.line}
-                    activeOutlineColor={Theme.colors.primaryAccent}
+                    activeOutlineColor={C.accent}
                   />
                   {errors.full_name ? (
                     <HelperText type="error" visible>
@@ -512,7 +511,7 @@ export default function StudentProfileScreen() {
                     error={!!errors.phone}
                     style={styles.input}
                     outlineColor={C.line}
-                    activeOutlineColor={Theme.colors.primaryAccent}
+                    activeOutlineColor={C.accent}
                   />
                   {errors.phone ? (
                     <HelperText type="error" visible>
@@ -545,7 +544,7 @@ export default function StudentProfileScreen() {
                 returnKeyType="done"
                 style={styles.input}
                 outlineColor={C.line}
-                activeOutlineColor={Theme.colors.primaryAccent}
+                activeOutlineColor={C.accent}
                 right={
                   <TextInput.Icon
                     icon="plus"
@@ -617,7 +616,7 @@ export default function StudentProfileScreen() {
               onPress={handlePickResume}
               loading={uploading}
               disabled={uploading}
-              textColor={Theme.colors.primaryAccent}
+              textColor={C.accent}
               style={styles.resumeBtn}
               contentStyle={styles.resumeBtnContent}
             >
@@ -629,7 +628,7 @@ export default function StudentProfileScreen() {
               onPress={handleDownloadCv}
               loading={downloadingCv}
               disabled={downloadingCv}
-              textColor={Theme.colors.primaryAccent}
+              textColor={C.accent}
               style={styles.resumeBtn}
               contentStyle={styles.resumeBtnContent}
             >
@@ -655,7 +654,7 @@ export default function StudentProfileScreen() {
             loading={saving}
             disabled={!canSave || saving}
             onPress={handleSubmit(handleSave, () => showAlert("Check your details", "Some fields need attention. Fix the highlighted fields and save again."))}
-            buttonColor={Theme.colors.primaryAccent}
+            buttonColor={C.accent}
             textColor="#FFFFFF"
             style={styles.saveButton}
             contentStyle={styles.saveButtonContent}
@@ -738,7 +737,7 @@ const styles = StyleSheet.create({
   roleBadge: {
     fontSize: 10,
     fontWeight: "700",
-    color: Theme.colors.primaryAccent,
+    color: C.accent,
     backgroundColor: C.accentSoft,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -785,7 +784,7 @@ const styles = StyleSheet.create({
   completePercent: {
     fontSize: 12,
     fontWeight: "700",
-    color: Theme.colors.primaryAccent,
+    color: C.accent,
   },
   bar: {
     height: 6,
@@ -909,7 +908,7 @@ const styles = StyleSheet.create({
   },
   resumeBannerLink: {
     fontSize: 12,
-    color: Theme.colors.primaryAccent,
+    color: C.accent,
     textDecorationLine: "underline",
   },
   resumeMissingBanner: {

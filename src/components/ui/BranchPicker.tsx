@@ -1,8 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { C } from '@/theme/design';
-import { Theme } from '@/theme/theme';
+import { C, S } from '@/theme/design';
 import { BRANCHES, BRANCH_GROUPS } from '@/constants/branches';
 
 /**
@@ -76,14 +75,14 @@ export const BranchPicker: React.FC<{
   );
 };
 
-const gap = Theme.spacing.sm;
+const gap = S.sm;
 
 const styles = StyleSheet.create({
-  wrap: { gap: Theme.spacing.md },
+  wrap: { gap: S.md },
   toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   count: { fontSize: 13, color: C.muted, fontWeight: '500' },
-  links: { flexDirection: 'row', gap: Theme.spacing.sm },
-  linkBtn: { minHeight: 44, justifyContent: 'center', paddingHorizontal: Theme.spacing.sm },
+  links: { flexDirection: 'row', gap: S.sm },
+  linkBtn: { minHeight: 44, justifyContent: 'center', paddingHorizontal: S.sm },
   link: { fontSize: 14, fontWeight: '600', color: C.accent },
   linkDisabled: { color: C.faint },
   group: { gap },

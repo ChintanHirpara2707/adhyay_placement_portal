@@ -25,7 +25,7 @@ interface TopNavbarProps {
 }
 
 export const TopNavbar: React.FC<TopNavbarProps> = ({
-  title = "PlacementPortal",
+  title = "Adhyay Placement Portal",
   subtitle,
   showBack = false,
 }) => {

@@ -13,7 +13,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useNavigationWatcher } from '@/hooks/useSafeNavigate';
 import { ScreenLoader } from '@/components/loading/ScreenLoader';
 import { TopProgressBar } from '@/components/loading/TopProgressBar';
-import { customPaperTheme, Theme } from '@/theme/theme';
+import { C, paperTheme } from '@/theme/design';
 
 import { AppIntro, markIntroPlayed, shouldPlayIntro } from '@/components/AppIntro';
 import { AlertHost } from '@/components/AlertHost';
@@ -104,11 +104,11 @@ export default function RootLayout() {
     ...DefaultTheme,
     colors: {
       ...DefaultTheme.colors,
-      background: Theme.colors.background,
-      card: Theme.colors.background,
-      text: Theme.colors.primaryText,
-      border: Theme.colors.border,
-      primary: Theme.colors.primaryAccent,
+      background: C.paper,
+      card: C.paper,
+      text: C.ink,
+      border: C.line,
+      primary: C.accent,
     },
   };
 
@@ -116,13 +116,13 @@ export default function RootLayout() {
     <View style={styles.root}>
       {appReady ? (
     <ThemeProvider value={whiteNavTheme}>
-      <PaperProvider theme={customPaperTheme}>
+      <PaperProvider theme={paperTheme}>
         <StatusBar style="dark" />
         <AlertHost />
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: Theme.colors.background },
+            contentStyle: { backgroundColor: C.paper },
             animation: 'slide_from_right',
           }}
         >
@@ -146,7 +146,7 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Theme.colors.background },
+  root: { flex: 1, backgroundColor: C.paper },
   // Below the native splash overlay (zIndex 1000) so the splash still covers app start.
   overlay: { ...StyleSheet.absoluteFill, zIndex: 900, backgroundColor: '#FFFFFF' },
 });
